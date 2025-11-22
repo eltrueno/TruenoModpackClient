@@ -1,0 +1,48 @@
+{
+  "name": "truenomodpackclient",
+  "productName": "Trueno Modpack Client",
+  "version": "1.0.0",
+  "description": "Installer for Trueno's Minecrat modpacks",
+  "main": ".vite/build/main.js",
+  "scripts": {
+    "start": "electron-forge start -- --mode development",
+    "package": "electron-forge package -- --mode production",
+    "make": "electron-forge make -- --mode production",
+    "publish": "electron-forge publish -- --mode production",
+    "generate-manifest": "node scripts/generate-manifest.js"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.6.0",
+    "@electron-forge/maker-deb": "^7.6.0",
+    "@electron-forge/maker-rpm": "^7.6.0",
+    "@electron-forge/maker-squirrel": "^7.6.0",
+    "@electron-forge/maker-zip": "^7.6.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.6.0",
+    "@electron-forge/plugin-fuses": "^7.6.0",
+    "@electron-forge/plugin-vite": "^7.6.0",
+    "@electron/fuses": "^1.8.0",
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "autoprefixer": "^10.4.20",
+    "daisyui": "^4.12.22",
+    "electron": "33.2.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "vite": "^5.4.11",
+    "vite-plugin-static-copy": "^3.1.4",
+    "vite-svg-loader": "^5.1.0"
+  },
+  "keywords": [],
+  "author": {
+    "name": "Raúl Jiménez G. (el_trueno)",
+    "email": "truenodeveloper@gmail.com"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "electron-squirrel-startup": "^1.0.1",
+    "proper-lockfile": "^4.1.2",
+    "vue": "^3.5.13"
+  }
+}

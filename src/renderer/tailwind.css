@@ -1,0 +1,11 @@
+/* src/tailwind.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'minecrafter';
+  src: url('/fonts/mc-ten-lowercase-alt.ttf') format('truetype');
+  font-display: swap;
+}
+

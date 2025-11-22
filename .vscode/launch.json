@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Electron Main (Forge)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "electron-forge",
+        "start",
+        "--",
+        "--inspect"
+      ],
+      "console": "integratedTerminal",
+      "protocol": "inspector",
+      "windows": {
+        "runtimeExecutable": "npx.cmd"
+      },
+      "env": {
+        "ELECTRON_ENABLE_LOGGING": "true"
+      },
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
