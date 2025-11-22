@@ -45,6 +45,7 @@ provide('dialog', {
 });
 
 onMounted(() => {
+  document.title = `Trueno Modpack - v${__APP_VERSION__}`;
   window.appAPI.onStatus((_event, value) => {
     online.value = value;
     loading.value = false;
