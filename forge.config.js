@@ -24,7 +24,6 @@ module.exports = {
         exe: "Trueno Modpack.exe",
         certificateFile: './eltrueno-app-certificate.pfx',
         authors: 'Raúl Jiménez (el_trueno)',
-        description: "Installer for Trueno's Minecraft modpack",
         iconUrl: path.resolve(__dirname, "./public/icon/icon.ico"),
         setupIcon: path.resolve(__dirname, "./public/icon/icon.ico"),
         loadingGif: path.resolve(__dirname, "./public/TruenoModpack-loading-animation.gif"),
