@@ -28,7 +28,8 @@ module.exports = {
         setupIcon: path.resolve(__dirname, "./public/icon/icon.ico"),
         loadingGif: path.resolve(__dirname, "./public/TruenoModpack-loading-animation.gif"),
         title: "Trueno Modpack",
-        productName: "Trueno Modpack Client"
+        productName: "Trueno Modpack Client",
+        remoteReleases: "https://github.com/eltrueno/TruenoModpackClient/releases",
       },
     }
   ],
