@@ -29,7 +29,8 @@ module.exports = {
         loadingGif: path.resolve(__dirname, "./public/TruenoModpack-loading-animation.gif"),
         title: "Trueno Modpack",
         productName: "Trueno Modpack Client",
-        remoteReleases: "https://github.com/eltrueno/TruenoModpackClient/releases",
+        remoteReleases: "https://truenomodpack.eltrueno.es/update/win32/:version",
+        noDelta: false
       },
     }
   ],
