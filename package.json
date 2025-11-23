@@ -1,7 +1,7 @@
 {
   "name": "truenomodpackclient",
   "productName": "TruenoModpackClient",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Installer for Trueno's Minecraft modpacks",
   "main": ".vite/build/main.js",
   "scripts": {
