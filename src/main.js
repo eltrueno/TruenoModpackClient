@@ -11,6 +11,8 @@ const loaderInstaller = require('./minecraft/loader-installer.js');
 const minecraftProfile = require('./minecraft/minecraft-profile.js')
 const { openMinecraftLauncher, getMinecraftLaunchers } = require('./minecraft/launcher.js');
 
+const autoUpdater = require('./utils/autoUpdater.js');
+
 function checkInternet() {
   return new Promise((resolve) => {
     dns.lookup("google.com", (err) => {
@@ -21,14 +23,19 @@ function checkInternet() {
 
 process.on('uncaughtException', (err) => {
   console.error(err);
+  showToast('error', 'Error inesperado', 'Ha ocurrido un error inesperado. Para más información, consulta el log.');
 });
 
-//import started from "electron-squirrel-startup";
-const started = require('electron-squirrel-startup');
 
-if (started) {
+
+const mustQuit = autoUpdater.handleSquirrelEvents()
+//import started from "electron-squirrel-startup";
+//const started = require('electron-squirrel-startup');
+
+if (mustQuit) {
   app.quit();
 }
+
 
 let mainWindow;
 let online = false;
@@ -51,6 +58,7 @@ const createWindow = async () => {
       nodeIntegration: true
     },
   });
+
 
   mainWindow.webContents.once("did-finish-load", () => {
     mainWindow.webContents.send("status", online);
@@ -80,9 +88,11 @@ const createWindow = async () => {
     }
   });
 
+  //AutoUpdater
+  autoUpdater.setupAutoUpdater(mainWindow);
+
+
 };
-
-
 
 
 // This method will be called when Electron has finished

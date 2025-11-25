@@ -14,10 +14,10 @@ const svgAnims = computed(() =>
       enabled: svgHovered.value
     },
     gearsSpinAnimation: {
-      enabled: subprocessing.value
+      enabled: updating.value || subprocessing.value || loading.value
     },
     boltPathTrailAnimation:{
-      enabled: subprocessing.value,
+      enabled: updating.value || subprocessing.value || loading.value,
       strokeColor: "#ffe073",
       strokeWidth: 2.5
     } 
@@ -26,6 +26,17 @@ const svgAnims = computed(() =>
 const online = ref(false)
 const loading = ref(true)
 const subprocessing = ref(false)
+
+// AutoUpdater
+const updateStatus = ref({
+  checking: false,
+  downloading: false,
+  ready: false,
+  message: 'Cargando... Esto debería de ser rápido'
+});
+const updating = computed(() => updateStatus.value.checking || updateStatus.value.downloading);
+
+const loadingMessage = computed(() => updateStatus.value.message)
 
 // Referencia al diálogo global
 const dialogRef = ref(null);
@@ -46,31 +57,106 @@ provide('dialog', {
 
 onMounted(() => {
   document.title = `Trueno Modpack - v${__APP_VERSION__}`;
-  window.appAPI.onStatus((_event, value) => {
-    online.value = value;
-    loading.value = false;
-  });
 
   // Escuchar eventos de toast desde el main process
   window.appAPI.onToast((_event, toastData) => {
     toastRef.value?.add(toastData);
   });
+
+  window.appAPI.onStatus(async (_event, value) => {
+    online.value = value;
+    if(value){
+      //await checkForUpdates();
+    } else loading.value = false;
+  });
+
+  // Escuchar eventos del auto-updater
+  window.autoUpdater.onUpdateChecking((_event) => {
+    updateStatus.value = {
+      checking: true,
+      downloading: false,
+      ready: false,
+      message: 'Comprobando actualizaciones...'
+    };
+  });
+  window.autoUpdater.onUpdateAvailable((_event) => {
+    toastRef.value?.add({
+      title: 'Actualización disponible',
+      message: 'Hay una actualización de la aplicación disponible. Se procederá a su descarga',
+      type: 'info'
+    });
+    updateStatus.value = {
+      checking: false,
+      downloading: true,
+      ready: false,
+      message: 'Descargando actualización...'
+    };
+  });
+  window.autoUpdater.onUpdateNotAvailable((_event) => {
+    toastRef.value?.add({
+      title: 'No hay actualizaciones',
+      message: 'La aplicación se encuentra en la última versión',
+      type: 'success'
+    });
+    loading.value = false;
+    updateStatus.value = {
+      checking: false,
+      downloading: false,
+      ready: false,
+      message: ''
+    };
+  });
+  window.autoUpdater.onUpdateDownloaded((_event, info) => {
+    updateStatus.value = {
+      checking: false,
+      downloading: false,
+      ready: true,
+      message: 'Actualización lista. Reiniciando en 5 segundos...'
+    };
+
+  });
+  window.autoUpdater.onUpdateError((_event, error) => {
+    console.error('Error en actualización:', error);
+    toastRef.value?.add({
+      title: 'Error en actualización',
+      message: 'Ha ocurrido un error durante la actualización. Por favor, inténtalo de nuevo más tarde',
+      type: 'error'
+    }); 
+    loading.value = false;
+    updateStatus.value = {
+      checking: false,
+      downloading: false,
+      ready: false,
+      message: ''
+    };
+  });
+
 })
+
+async function checkForUpdates() {
+  try {
+    await window.autoUpdater.checkForUpdates();
+  } catch (error) {
+    console.error('Error al comprobar actualizaciones:', error);
+    updating.value = false;
+    loading.value = false;
+  }
+}
 
 </script>
 
 <template>
-  <div v-if="loading" class="w-screen h-screen flex flex-col justify-center items-center">
+  <div v-if="loading || updating" class="w-screen h-screen flex flex-col justify-center items-center">
     <TruenoModpackSvg class="w-80 h-80 p-2 overflow-visible" shadow :animations="{gearsSpinAnimation: {enabled: true}, boltGlowAnimation: {enabled: true}}" />
 
-    <span class="font-semibold text-xl mt-1">Cargando... Esto debería de ser rápido</span>
+    <span class="font-semibold text-xl mt-1">{{ loadingMessage }}</span>
   </div>
-  <div v-if="!loading && !online" class="w-screen h-screen flex flex-col justify-center items-center pointer-events-none select-none group-hover:select-none">
+  <div v-if="!loading &&!updating && !online" class="w-screen h-screen flex flex-col justify-center items-center pointer-events-none select-none group-hover:select-none">
     <span class="font-bold text-4xl">Oops..</span>
     <span class="font-medium text-xl">Parece que no tienes conexión a internet. Vuleve a abrir la aplicación cuando lo hayas solucionado</span>
     <img src="/no-connection.png" class="lg:w-10/12 pointer-events-none select-none group-hover:select-none" alt="An enderman disconnect the internet cable">
   </div>
-  <div class="flex w-full flex-col p-1" v-else-if="!loading && online">
+  <div class="flex w-full flex-col p-1" v-else-if="!loading && !updating && online">
     <div class="flex align-middle justify-center p-2">
       <TruenoModpackSvg id="anim" class="w-36 p-1 overflow-visible mx-2" shadow :animations=svgAnims @mouseenter="svgHovered=true" @mouseleave="svgHovered=false"/>
       <div class="flex flex-col justify-around ">

@@ -8,11 +8,29 @@ module.exports = {
     icon: path.resolve(__dirname, "./public/icon/icon"),
     name: "TruenoModpackClient",
     executableName: "Trueno Modpack",
+    productName: "Trueno Modpack",
     appBundleId: "es.eltrueno.modpack.client",
+    win32metadata: {
+      CompanyName: "Raúl Jiménez (el_trueno)",
+      FileDescription: "Trueno Modpack",
+      OriginalFilename: "Trueno Modpack.exe",
+      ProductName: "Trueno Modpack",
+      InternalName: "TruenoModpackClient"
+    },
     ignore: [
       /^\/src$/,
-      /(.eslintrc.json)|(.gitignore)|(electron.vite.config.ts)|(README.md)/,
       /^\/\.vscode$/,
+      /^\/node_modules\/\.cache/,
+      /^\/node_modules\/.*\/(test|tests|__tests__)\/?/,
+      /^\/scripts$/,
+      /README\.md$/,
+      /\.gitignore$/,
+      /\.eslintrc\.json$/,
+      /\.prettier(rc|\.config\.js)?$/,
+      /tsconfig\.json$/,
+      /package-lock\.json$/,
+      /\.env(\..+)?$/,
+      /^\/out$/
     ]
   },
   rebuildConfig: {},
@@ -22,15 +40,16 @@ module.exports = {
       config: {
         name: "TruenoModpackClient",
         exe: "Trueno Modpack.exe",
+        setupExe: "TruenoModpackSetup.exe",
         certificateFile: './eltrueno-app-certificate.pfx',
         authors: 'Raúl Jiménez (el_trueno)',
         iconUrl: path.resolve(__dirname, "./public/icon/icon.ico"),
         setupIcon: path.resolve(__dirname, "./public/icon/icon.ico"),
         loadingGif: path.resolve(__dirname, "./public/TruenoModpack-loading-animation.gif"),
         title: "Trueno Modpack",
-        productName: "Trueno Modpack Client",
+        productName: "Trueno Modpack",
         remoteReleases: "https://truenomodpack.eltrueno.es/update/win32/:version",
-        noDelta: false
+        noDelta: true
       },
     }
   ],
@@ -70,7 +89,7 @@ module.exports = {
       [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
       [FuseV1Options.EnableNodeCliInspectArguments]: false,
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
-      [FuseV1Options.OnlyLoadAppFromAsar]: false,
+      [FuseV1Options.OnlyLoadAppFromAsar]: true,
     }),
   ],
 };

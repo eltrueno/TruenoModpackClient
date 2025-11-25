@@ -1,7 +1,7 @@
 {
   "name": "truenomodpackclient",
-  "productName": "TruenoModpackClient",
-  "version": "0.1.6",
+  "productName": "Trueno Modpack",
+  "version": "0.2.0",
   "description": "Installer for Trueno's Minecraft modpacks",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -35,7 +35,7 @@
   },
   "keywords": [],
   "author": {
-    "name": "Raúl Jiménez G. (el_trueno)",
+    "name": "Raúl Jiménez (el_trueno)",
     "email": "truenodeveloper@gmail.com"
   },
   "license": "MIT",

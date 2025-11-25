@@ -1,4 +1,4 @@
-import { defineConfig,normalizePath } from 'vite';
+import { defineConfig, normalizePath } from 'vite';
 import { builtinModules } from 'module';
 import path from 'path';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
@@ -35,11 +35,11 @@ export default defineConfig(({ mode }) => ({
     },
     copyPublicDir: false,
     sourcemap: mode === 'development',
-    rollupOptions:{
+    rollupOptions: {
       output: {
         entryFileNames: '[name].js'
       },
-        external: [
+      external: [
         'electron',
         ...builtinModules,
         ...builtinModules.map(m => `node:${m}`)
