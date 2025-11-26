@@ -234,6 +234,20 @@ async function saveLocalModpack(modpackId, manifest) {
   }
 }
 
+async function saveLocalVersion(modpackId, data) {
+  const filePath = path.join(getModpackDataPath(modpackId), 'truenomodpack_version.json');
+
+  await ensureDir(path.dirname(filePath));
+  await ensureFile(filePath);
+
+  const release = await lockfile.lock(filePath, { retries: 5 });
+  try {
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+  } finally {
+    await release();
+  }
+}
+
 
 async function calculateSyncOperations(modpackId, remoteModpack) {
   const remote = remoteModpack ? remoteModpack : await getRemoteModpack(modpackId);
@@ -473,6 +487,15 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
 
     //Aplicar cambios al manifest json
     await saveLocalModpack(modpackId, localManifest);
+
+    await saveLocalVersion(modpackId, {
+      modpack_id: remote.id,
+      modpack_name: remote.name,
+      installed_version: remote.version,
+      installed_version_string: remote.versions[remote.version + ""].string,
+      installed_version_description: remote.versions[remote.version + ""].description,
+      updated_at: nowDate
+    });
 
     //Añadir perfil al profiles_json de la .minecraft
     if (makeProfile) await minecraftProfile.createOrUpdateProfile(modpackId, remote.name, versionId, installPath)
