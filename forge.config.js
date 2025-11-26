@@ -49,7 +49,7 @@ module.exports = {
         title: "Trueno Modpack",
         productName: "Trueno Modpack",
         remoteReleases: "https://truenomodpack.eltrueno.es/update/win32/:version",
-        noDelta: true
+        noDelta: false
       },
     }
   ],

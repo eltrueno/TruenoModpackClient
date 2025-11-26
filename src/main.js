@@ -614,6 +614,10 @@ ipcMain.handle('open-minecraft-launcher', async (event, launcher) => {
   return reply;
 });
 
+ipcMain.handle('open-modpack-path', async (event, modpackId) => {
+  return await shell.openPath(getModpackDataPath(modpackId));
+});
+
 // Toast system
 ipcMain.on('show-toast', (event, toastData) => {
   if (mainWindow && !mainWindow.isDestroyed()) {

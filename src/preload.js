@@ -14,7 +14,10 @@ contextBridge.exposeInMainWorld('appAPI', {
   getMinecraftLaunchers: () => ipcRenderer.invoke('get-minecraft-launchers'),
   onInstallationProgress: (callback) => ipcRenderer.on('installation-progress', (event, data) => callback(data)),
   removeInstallationProgressListener: () => ipcRenderer.removeAllListeners('installation-progress'),
+  //Online status?
   onStatus: (callback) => ipcRenderer.on("status", callback),
+  //Open native file explorer
+  openModpackPath: (modpackId) => ipcRenderer.invoke("open-modpack-path", modpackId),
   // Toast API
   showToast: (type, title, message, duration) => ipcRenderer.send('show-toast', { type, title, message, duration }),
   onToast: (callback) => ipcRenderer.on('show-toast', callback)
