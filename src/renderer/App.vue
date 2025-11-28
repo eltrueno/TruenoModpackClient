@@ -7,6 +7,8 @@ import TruenoModpackSvg from './components/utils/TruenoModpackSvg.vue';
 import GlobalDialog from './components/utils/GlobalDialog.vue'
 import GlobalToast from './components/utils/GlobalToast.vue'
 
+const APP_VERSION = __APP_VERSION__
+
 const svgHovered = ref(false)
 const svgAnims = computed(() =>
   ({
@@ -159,18 +161,18 @@ async function checkForUpdates() {
   <div class="flex w-full flex-col p-1" v-else-if="!loading && !updating && online">
     <div class="flex align-middle justify-center p-2">
       <TruenoModpackSvg id="anim" class="w-36 p-1 overflow-visible mx-2" shadow :animations=svgAnims @mouseenter="svgHovered=true" @mouseleave="svgHovered=false"/>
-      <div class="flex flex-col justify-around ">
+      <div class="flex flex-col justify-start gap-8">
         <p class="font-black  drop-shadow-xl text-6xl text-[#ebc22f] "@mouseenter="svgHovered=true" @mouseleave="svgHovered=false">TRUENO</p>
-        <p class="font-minecraft font-medium drop-shadow-lg text-4xl tracking-wide ml-2 w-fit max-w-fit"@mouseenter="svgHovered=true" @mouseleave="svgHovered=false">ModPack</p>
+        <p class="font-minecraft font-medium drop-shadow-lg text-4xl tracking-wide ml-1 w-fit max-w-fit"@mouseenter="svgHovered=true" @mouseleave="svgHovered=false">ModPack</p>
       </div>
     </div>
-    <Modpack class="py-2" modpack_name="Depresivos 2K25" modpack_id="depresivos2k25" modpack_desc="Modpack fabric version 1.19.4" 
+    <Modpack class="py-2" modpack_name="Depresivos 2K25" modpack_id="depresivos2k25" modpack_desc="Modpack fabric version 1.20.1" 
     modpack_image_url="https://eltrueno.github.io/truenomodpack/depresivos2k25/logo.png" />
     <ActionSection modpack_name="Depresivos 2K25" modpack_id="depresivos2k25" v-model:processing="subprocessing" />
   </div>
-  <footer class="footer footer-center bg-base-300 text-base-content p-4 absolute bottom-0 z-50">
+  <footer class="footer footer-center bg-base-300 text-base-content p-2 absolute bottom-0 z-50">
     <aside>
-      <p>Desarrollado con ❤️ por <a href="https://github.com/eltrueno">el_trueno</a></p>
+      <p>Trueno Modpack v{{ APP_VERSION }} - Desarrollado con ❤️ por <a href="https://github.com/eltrueno">el_trueno</a></p>
     </aside>
   </footer>
 

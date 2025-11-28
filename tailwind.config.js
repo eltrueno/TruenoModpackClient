@@ -7,14 +7,14 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        minecraft: ['minecraft']
+        minecraft: ['minecrafter']
       }
     },
   },
   plugins: [
     daisyui
   ],
-  daisyui : {
+  daisyui: {
     themes: false
   }
 }

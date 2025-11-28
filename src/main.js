@@ -45,12 +45,12 @@ const createWindow = async () => {
 
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 1100,
-    minWidth: 1100,
-    maxWidth: 1300,
-    height: 900,
-    minHeight: 900,
-    maxHeight: 950,
+    width: 1000,
+    minWidth: 1000,
+    maxWidth: 1200,
+    height: 800,
+    minHeight: 775,
+    maxHeight: 900,
     maximizable: false,
     icon: '././public/icon/icon.png',
     webPreferences: {
