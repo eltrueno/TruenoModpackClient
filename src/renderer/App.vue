@@ -50,6 +50,14 @@ const updateStatus = ref({
   ready: false,
   message: 'Cargando... Esto debería de ser rápido'
 });
+
+const updateDownloadStatus = ref({
+  percent: 0,
+  total: null,
+  downloaded: null,
+  speed: null
+});
+
 const updating = computed(() => updateStatus.value.checking || updateStatus.value.downloading);
 
 const loadingMessage = computed(() => updateStatus.value.message)
@@ -88,9 +96,7 @@ onMounted(async () => {
 
   window.appAPI.onStatus(async (_event, value) => {
     online.value = value;
-    if(value){
-      //await checkForUpdates();
-    } else loading.value = false;
+    if(!value) loading.value = false;
   });
 
   // Escuchar eventos del auto-updater
@@ -126,7 +132,21 @@ onMounted(async () => {
       checking: false,
       downloading: false,
       ready: false,
-      message: ''
+      message: 'test'
+    };
+  });
+  window.autoUpdater.onUpdateDownloadProgress((_event, progress) => {
+    updateStatus.value = {
+      checking: false,
+      downloading: true,
+      ready: false,
+      message: `Descargando actualización... (${progress.percent}%)`
+    };
+    updateDownloadStatus.value = {
+      percent: progress.percent,
+      total: progress.total,
+      downloaded: progress.downloaded,
+      speed: progress.speed
     };
   });
   window.autoUpdater.onUpdateDownloaded((_event, info) => {
@@ -134,8 +154,16 @@ onMounted(async () => {
       checking: false,
       downloading: false,
       ready: true,
-      message: 'Actualización lista. Reiniciando en 5 segundos...'
+      message: 'Actualización completada. Reiniciando en 5 segundos...'     
     };
+    let time = 5;
+    const interval = setInterval(() => {
+      time--;
+      updateStatus.value.message = `Actualización completada. Reiniciando en ${time} segundos...`;
+      if (time < 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
 
   });
   window.autoUpdater.onUpdateError((_event, error) => {
@@ -143,36 +171,33 @@ onMounted(async () => {
     toastRef.value?.add({
       title: 'Error en actualización',
       message: 'Ha ocurrido un error durante la actualización. Por favor, inténtalo de nuevo más tarde',
-      type: 'error'
+      type: 'error',
+      duration: 3000
     }); 
     loading.value = false;
     updateStatus.value = {
       checking: false,
       downloading: false,
       ready: false,
-      message: ''
+      message: 'test'
     };
   });
 
 })
 
-async function checkForUpdates() {
-  try {
-    await window.autoUpdater.checkForUpdates();
-  } catch (error) {
-    console.error('Error al comprobar actualizaciones:', error);
-    updating.value = false;
-    loading.value = false;
-  }
-}
-
 </script>
 
 <template>
-  <div v-if="loading || updating || config.loading" class="w-screen h-screen flex flex-col justify-center items-center">
-    <TruenoModpackSvg class="w-80 h-80 p-2 overflow-visible" shadow :animations="{gearsSpinAnimation: {enabled: true}, boltGlowAnimation: {enabled: true}}" />
-
-    <span class="font-semibold text-xl mt-1">{{ loadingMessage }}</span>
+  <div v-if="loading || updating || config.loading" class="w-screen h-screen flex flex-col justify-center items-center gap-12">
+    <TruenoModpackSvg class="w-60 h-60 p-2 overflow-visible" shadow :animations="{gearsSpinAnimation: {enabled: true}, boltGlowAnimation: {enabled: true}}" />
+    <div class="flex flex-col gap-2 ustify-center items-center">
+      <span class="font-semibold text-xl">{{ loadingMessage }}</span>
+      <progress class="progress w-96" :value="updateDownloadStatus.percent" max="100"></progress>
+      <div class="w-96 flex justify-between items-center">
+        <span>{{ updateDownloadStatus.downloaded }}MB/{{ updateDownloadStatus.total }}MB</span>
+        <span>{{ updateDownloadStatus.speed }}KB/s</span>
+      </div>
+    </div>
   </div>
   <div v-if="!loading &&!updating && !online" class="w-screen h-screen flex flex-col justify-center items-center pointer-events-none select-none group-hover:select-none">
     <span class="font-bold text-4xl">Oops..</span>
