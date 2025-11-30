@@ -75,15 +75,15 @@
                     <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                         <path fill-rule="evenodd" d="M8.6 5.2A1 1 0 0 0 7 6v12a1 1 0 0 0 1.6.8l8-6a1 1 0 0 0 0-1.6l-8-6Z" clip-rule="evenodd"/>
                     </svg>
-                    Abrir lanzador de Minecraft ({{ launchersNamesMap[selectedLauncher] }})
+                    Abrir lanzador de Minecraft ({{ launchersNamesMap[config.userPreferences.preferedLauncher] }})
                 </button>
 
                 <!-- Botón de opciones -->
                 <button class="btn btn-primary shadow-md hover:shadow-lg rounded-r-full rounded-l-none border-l border-primary-content/20 tooltip tooltip-top 
                     " :data-tip="showOptions ? 'Ocultar opciones' : 'Desplegar opciones'"
                     @click="showOptions = !showOptions" @mouseenter="hoverOptions = true" @mouseleave="hoverOptions = false">
-                    <svg class="w-5 h-5 transition-transform duration-300" :class="{ 'rotate-90': showOptions }" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                        <path fill-rule="evenodd" d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" clip-rule="evenodd"/>
+                    <svg class="w-5 h-5 transition-transform duration-300" :class="{ 'rotate-90': showOptions }"aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                        <path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm11-4.243a1 1 0 1 0-2 0V11H7.757a1 1 0 1 0 0 2H11v3.243a1 1 0 1 0 2 0V13h3.243a1 1 0 1 0 0-2H13V7.757Z" clip-rule="evenodd"/>
                     </svg>
                     <transition
                         mode="out-in"
@@ -126,7 +126,7 @@
                                         <label class="flex items-center  justify-center gap-2  cursor-pointer hover:bg-base-300 p-2 rounded-lg" data-tip="¡No tienes instalado este launcher!"
                                             :class="{ 'tooltip tooltip-bottom': !installedLaunchers.includes('classic') }">
                                             <input type="radio" name="radioLauncher" class="radio radio-sm radio-primary" value="classic" 
-                                                v-model="selectedLauncher"
+                                                v-model="config.userPreferences.preferedLauncher"
                                                 :disabled="!installedLaunchers.includes('classic')"
                                                 />
                                             <span class="text-sm"
@@ -139,7 +139,7 @@
                                                 :class="{ 'text-base-content/50': !installedLaunchers.includes('uwp') }"
                                                 >Oficial Windows (uwp)</span>
                                             <input type="radio" name="radioLauncher" class="radio radio-sm radio-primary" value="uwp" 
-                                                v-model="selectedLauncher"
+                                                v-model="config.userPreferences.preferedLauncher"
                                                 :disabled="!installedLaunchers.includes('uwp')"/>
                                         </label>
                                     </div>
@@ -170,11 +170,39 @@
 
                         <!-- Opciones (instalar) -->
                         <div class="bg-base-200 rounded-box shadow-xl p-4" v-if="modpackStatus=='uninstalled'">
-                            asdasd
-                                    
-                            <div class="divider my-1"></div>
-                                    
-                            asdasd
+                            <span class="flex gap-3 place-items-center text-base font-semibold tooltip tooltip-bottom w-fit"
+                            data-tip="Selecciona la cantidad de memoria RAM máxima que quieres asignarle a Minecraft. Recomiendo como máximo asignarle tres cuartas partes de la RAM total de tu ordenador.">
+                                <svg class="w-5 h5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M5 13.17a3.001 3.001 0 0 0 0 5.66V20a1 1 0 1 0 2 0v-1.17a3.001 3.001 0 0 0 0-5.66V4a1 1 0 0 0-2 0v9.17ZM11 20v-9.17a3.001 3.001 0 0 1 0-5.66V4a1 1 0 1 1 2 0v1.17a3.001 3.001 0 0 1 0 5.66V20a1 1 0 1 1-2 0Zm6-1.17V20a1 1 0 1 0 2 0v-1.17a3.001 3.001 0 0 0 0-5.66V4a1 1 0 1 0-2 0v9.17a3.001 3.001 0 0 0 0 5.66Z"/>
+                                </svg>
+                                <span>Memoria RAM máxima: <span class="font-normal">{{ config.userPreferences.maxRamMB }} MB <span class="font-light italic">({{ config.userPreferences.maxRamMB / 1024 }} GB)</span></span></span>        
+                            </span>
+                            <div class="w-full py-2 px-8">
+                                <input class="range range-primary range-xs" type="range" :min=4096 :max=systemMemory.threeQuartersTotalGB*1024 v-model.number="config.userPreferences.maxRamMB" step="1024" />
+                                <div class="flex text-sm justify-between">
+                                    <span>4 GB</span>
+                                    <span>{{ systemMemory.threeQuartersTotalGB }} GB</span>
+                                </div>
+                            </div>
+                            
+                            <span class="flex gap-3 place-items-center text-base font-semibold tooltip tooltip-right w-fit">
+                                <svg class="w-5 h-5 transition-transform duration-300" :class="{ 'rotate-90': showOptions }" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                    <path fill-rule="evenodd" d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" clip-rule="evenodd"/>
+                                </svg>
+                                <span>Más opciones:</span>
+                            </span>
+                            <div class="w-full py-1 px-8 flex justify-between">
+                                <label class="label gap-1 cursor-pointer">
+                                    <input type="checkbox" v-model="config.userPreferences.copyOptions" class="checkbox checkbox-sm checkbox-primary" />
+                                    <span class="text-sm tooltip tooltip-right"
+                                    data-tip="Copia tus opciones existentes en la .minecraft para usarlas en esta instalación">Copiar opciones</span>
+                                </label>
+                                <label class="label gap-1 cursor-pointer">
+                                    <input type="checkbox" v-model="config.userPreferences.createProfile" class="checkbox checkbox-sm checkbox-primary" />
+                                    <span class="text-sm tooltip tooltip-left"
+                                    data-tip="Crea un perfil para este modpack en el launcher (recomendado)">Crear perfil</span>
+                                </label>
+                            </div>
                         </div>
 
                     </div>
@@ -310,7 +338,7 @@
                         Estás usando la última versión del modpack
                     </div>
                     <div class="tooltip tooltip-left absolute top-0 right-0 p-0" data-tip="Verificar archivos">
-                        <button v-if="modpackStatus != 'uninstalled' && !isInstalling && !loading" class="btn btn-circle btn-ghost"
+                        <button v-if="modpackStatus == 'updated' && !isInstalling && !loading" class="btn btn-circle btn-ghost"
                         @click="verifyIntegrity">
                             <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Z"/>
@@ -326,6 +354,10 @@
 
 <script setup>
 import { reactive, ref, onBeforeMount, onUnmounted, inject } from "vue"
+
+import { useConfig } from '../composables/useConfig';
+
+const { config, set } = useConfig();
 
 const props = defineProps({
   modpack_id: String,
@@ -371,6 +403,8 @@ const progressTotalSize = ref(0)
 
 const showOptions = ref(false)
 const hoverOptions = ref(false)
+
+const systemMemory = ref({})
 
 const localModpackVersion = reactive({
     version: -1,
@@ -582,7 +616,6 @@ async function verifyIntegrity() {
         finishProcessing();
     } catch (err) {
         console.error('Error verificando la integridad de los archivos:', err);
-        //error.value = 'Ha ocurrido un error verificando la integridad de los archivos instalados del modpack';
         window.appAPI.showToast('error', 'Error verificando la integridad de los archivos', 'Ha ocurrido un error verificando la integridad de los archivos instalados del modpack');
         loading.value = false;
         finishProcessing();
@@ -598,8 +631,15 @@ onBeforeMount(async () => {
 
     // Obtener launchers
     installedLaunchers.value = await window.appAPI.getMinecraftLaunchers(); 
-    if(installedLaunchers.value.includes('classic')) selectedLauncher.value = 'classic'
-    else if(installedLaunchers.value.includes('uwp')) selectedLauncher.value = 'uwp'
+    if(!installedLaunchers.value.includes(config.userPreferences.preferedLauncher)){
+        if(installedLaunchers.value.includes('classic')) await set('userPreferences.preferedLauncher', 'classic')
+        else if(installedLaunchers.value.includes('uwp')) await set('userPreferences.preferedLauncher', 'uwp')
+        else await set('userPreferences.preferedLauncher', '')
+    }
+
+    // Obtener info del sistema
+    systemMemory.value = await window.appAPI.getRamInfo();
+
 })
 
 onUnmounted(() => {

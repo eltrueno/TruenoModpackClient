@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
         {
           src: normalizePath('src/utils/**/*'),
           dest: 'utils'
-        },
+        }
       ]
     })
   ],

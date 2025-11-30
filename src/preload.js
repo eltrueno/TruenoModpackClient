@@ -20,7 +20,8 @@ contextBridge.exposeInMainWorld('appAPI', {
   openModpackPath: (modpackId) => ipcRenderer.invoke("open-modpack-path", modpackId),
   // Toast API
   showToast: (type, title, message, duration) => ipcRenderer.send('show-toast', { type, title, message, duration }),
-  onToast: (callback) => ipcRenderer.on('show-toast', callback)
+  onToast: (callback) => ipcRenderer.on('show-toast', callback),
+  getRamInfo: () => ipcRenderer.invoke('get-ram-info')
 });
 
 contextBridge.exposeInMainWorld('autoUpdater', {
@@ -31,4 +32,23 @@ contextBridge.exposeInMainWorld('autoUpdater', {
   onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
   onUpdateError: (callback) => ipcRenderer.on('update-error', callback),
   onUpdateDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', callback),
-}); 
+});
+
+contextBridge.exposeInMainWorld('config', {
+  get: (key) => ipcRenderer.invoke('config:get', key),
+  set: (key, value) => ipcRenderer.invoke('config:set', key, value),
+  getAll: () => ipcRenderer.invoke('config:getAll'),
+  setAll: (config) => ipcRenderer.invoke('config:setAll', config),
+  save: () => ipcRenderer.invoke('config:save'),
+  reset: () => ipcRenderer.invoke('config:reset')
+});
+
+contextBridge.exposeInMainWorld('electron', {
+  ipcRenderer: {
+    on: (channel, callback) => {
+      if (channel === 'app-closing') {
+        ipcRenderer.on(channel, callback);
+      }
+    }
+  }
+});

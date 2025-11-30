@@ -12,6 +12,7 @@ const minecraftProfile = require('./minecraft/minecraft-profile.js')
 const { openMinecraftLauncher, getMinecraftLaunchers } = require('./minecraft/launcher.js');
 
 const autoUpdater = require('./utils/autoUpdater.js');
+const configManager = require('./utils/configManager.js');
 
 function checkInternet() {
   return new Promise((resolve) => {
@@ -42,6 +43,8 @@ let online = false;
 
 const createWindow = async () => {
   online = await checkInternet();
+
+  await configManager.load();
 
   // Create the browser window.
   mainWindow = new BrowserWindow({
@@ -116,6 +119,10 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+app.on('will-quit', async () => {
+  await configManager.save();
 });
 
 
@@ -637,3 +644,16 @@ function showToast(type = 'info', title, message, duration) {
     mainWindow.webContents.send('show-toast', { type, title, message, duration });
   }
 }
+
+const os = require('os');
+ipcMain.handle('get-ram-info', async () => {
+  const total = os.totalmem();
+  const free = os.freemem();
+
+  return {
+    totalGB: (total / 1024 / 1024 / 1024).toFixed(1),
+    totalGBRounded: Math.round(total / 1024 / 1024 / 1024),
+    threeQuartersTotalGB: Math.round((total / 1024 / 1024 / 1024) * 0.75),
+    freeGB: (free / 1024 / 1024 / 1024).toFixed(1)
+  };
+});

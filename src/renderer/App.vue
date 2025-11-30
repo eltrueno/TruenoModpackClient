@@ -7,7 +7,21 @@ import TruenoModpackSvg from './components/utils/TruenoModpackSvg.vue';
 import GlobalDialog from './components/utils/GlobalDialog.vue'
 import GlobalToast from './components/utils/GlobalToast.vue'
 
+import { useConfig } from './composables/useConfig';
+
 const APP_VERSION = __APP_VERSION__
+
+
+const { 
+  config, 
+  isLoading, 
+  isSaving, 
+  set, 
+  get, 
+  save, 
+  reset, 
+  init 
+} = useConfig();
 
 const svgHovered = ref(false)
 const svgAnims = computed(() =>
@@ -57,8 +71,15 @@ provide('dialog', {
     dialogRef.value?.show({ title, message, type: type, bgColor: bgcolor, confirmable: true, confirmText, cancelText })
 });
 
-onMounted(() => {
+onMounted(async () => {
   document.title = `Trueno Modpack - v${__APP_VERSION__}`;
+
+  //Iniciar config
+  await init();
+
+  window.electron?.ipcRenderer?.on?.('app-closing', async () => {
+    await save(); // Esto sincroniza todo antes de cerrar
+  });
 
   // Escuchar eventos de toast desde el main process
   window.appAPI.onToast((_event, toastData) => {
@@ -148,7 +169,7 @@ async function checkForUpdates() {
 </script>
 
 <template>
-  <div v-if="loading || updating" class="w-screen h-screen flex flex-col justify-center items-center">
+  <div v-if="loading || updating || config.loading" class="w-screen h-screen flex flex-col justify-center items-center">
     <TruenoModpackSvg class="w-80 h-80 p-2 overflow-visible" shadow :animations="{gearsSpinAnimation: {enabled: true}, boltGlowAnimation: {enabled: true}}" />
 
     <span class="font-semibold text-xl mt-1">{{ loadingMessage }}</span>
@@ -158,7 +179,7 @@ async function checkForUpdates() {
     <span class="font-medium text-xl">Parece que no tienes conexión a internet. Vuleve a abrir la aplicación cuando lo hayas solucionado</span>
     <img src="/no-connection.png" class="lg:w-10/12 pointer-events-none select-none group-hover:select-none" alt="An enderman disconnect the internet cable">
   </div>
-  <div class="flex w-full flex-col p-1" v-else-if="!loading && !updating && online">
+  <div class="flex w-full flex-col p-1" v-else-if="!loading && !config.loading && !updating && online">
     <div class="flex align-middle justify-center p-2">
       <TruenoModpackSvg id="anim" class="w-36 p-1 overflow-visible mx-2" shadow :animations=svgAnims @mouseenter="svgHovered=true" @mouseleave="svgHovered=false"/>
       <div class="flex flex-col justify-start gap-8">
