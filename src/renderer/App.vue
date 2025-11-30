@@ -51,12 +51,6 @@ const updateStatus = ref({
   message: 'Cargando... Esto debería de ser rápido'
 });
 
-const updateDownloadStatus = ref({
-  percent: 0,
-  total: null,
-  downloaded: null,
-  speed: null
-});
 
 const updating = computed(() => updateStatus.value.checking || updateStatus.value.downloading);
 
@@ -135,20 +129,6 @@ onMounted(async () => {
       message: 'test'
     };
   });
-  window.autoUpdater.onUpdateDownloadProgress((_event, progress) => {
-    updateStatus.value = {
-      checking: false,
-      downloading: true,
-      ready: false,
-      message: `Descargando actualización... (${progress.percent}%)`
-    };
-    updateDownloadStatus.value = {
-      percent: progress.percent,
-      total: progress.total,
-      downloaded: progress.downloaded,
-      speed: progress.speed
-    };
-  });
   window.autoUpdater.onUpdateDownloaded((_event, info) => {
     updateStatus.value = {
       checking: false,
@@ -192,11 +172,7 @@ onMounted(async () => {
     <TruenoModpackSvg class="w-60 h-60 p-2 overflow-visible" shadow :animations="{gearsSpinAnimation: {enabled: true}, boltGlowAnimation: {enabled: true}}" />
     <div class="flex flex-col gap-2 ustify-center items-center">
       <span class="font-semibold text-xl">{{ loadingMessage }}</span>
-      <progress v-if="updateStatus.downloading" class="progress w-96" :value="updateDownloadStatus.percent" max="100"></progress>
-      <div v-if="updateStatus.downloading" class="w-96 flex justify-between items-center">
-        <span>{{ updateDownloadStatus.downloaded }}MB/{{ updateDownloadStatus.total }}MB</span>
-        <span>{{ updateDownloadStatus.speed }}KB/s</span>
-      </div>
+      <progress v-if="updateStatus.downloading" class="progress w-96"></progress>
     </div>
   </div>
   <div v-if="!loading &&!updating && !online" class="w-screen h-screen flex flex-col justify-center items-center pointer-events-none select-none group-hover:select-none">
