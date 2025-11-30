@@ -192,8 +192,8 @@ onMounted(async () => {
     <TruenoModpackSvg class="w-60 h-60 p-2 overflow-visible" shadow :animations="{gearsSpinAnimation: {enabled: true}, boltGlowAnimation: {enabled: true}}" />
     <div class="flex flex-col gap-2 ustify-center items-center">
       <span class="font-semibold text-xl">{{ loadingMessage }}</span>
-      <progress class="progress w-96" :value="updateDownloadStatus.percent" max="100"></progress>
-      <div class="w-96 flex justify-between items-center">
+      <progress v-if="updateStatus.downloading" class="progress w-96" :value="updateDownloadStatus.percent" max="100"></progress>
+      <div v-if="updateStatus.downloading" class="w-96 flex justify-between items-center">
         <span>{{ updateDownloadStatus.downloaded }}MB/{{ updateDownloadStatus.total }}MB</span>
         <span>{{ updateDownloadStatus.speed }}KB/s</span>
       </div>
