@@ -92,7 +92,7 @@ const createWindow = async () => {
   });
 
   //AutoUpdater
-  autoUpdater.setupAutoUpdater(mainWindow);
+  autoUpdater.setupAutoUpdater(mainWindow, { initialDelay: -1 });
 
 
 };

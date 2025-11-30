@@ -8,6 +8,8 @@ class ConfigManager {
         this.config = {};
         this.configPath = path.join(app.getPath('userData'), 'config.json');
         this.defaultConfig = {
+            justUpdated: false,
+            updateCooldownMinutes: 30,
             lastOpened: null,
             userPreferences: {
                 copyOptions: true,

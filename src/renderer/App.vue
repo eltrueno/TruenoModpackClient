@@ -1,7 +1,7 @@
 <script setup>
 import Modpack from './components/Modpack.vue'
 import ActionSection from './components/ActionSection.vue';
-import { ref, onMounted, computed, provide } from 'vue'
+import { ref, onMounted, computed, provide, watch, watchEffect } from 'vue'
 
 import TruenoModpackSvg from './components/utils/TruenoModpackSvg.vue';
 import GlobalDialog from './components/utils/GlobalDialog.vue'
@@ -92,6 +92,26 @@ onMounted(async () => {
     online.value = value;
     if(!value) loading.value = false;
   });
+    
+  const mustUpdate = await mustCheckForUpdates();
+  const cfgJustUpdated = await get('justUpdated');
+
+  if(!cfgJustUpdated && mustUpdate) {
+    setTimeout(() => {
+      checkForUpdates();
+    }, 1500);
+  }else{
+    await set('justUpdated', false);
+    loading.value = false;
+    if(cfgJustUpdated){
+      toastRef.value?.add({
+        title: 'Actualización completada',
+        message: 'Se ha finalizado correctamente la actualización de la aplicación',
+        type: 'success',
+        duration: 2500
+      });
+    }
+  }
 
   // Escuchar eventos del auto-updater
   window.autoUpdater.onUpdateChecking((_event) => {
@@ -116,26 +136,23 @@ onMounted(async () => {
     };
   });
   window.autoUpdater.onUpdateNotAvailable((_event) => {
-    toastRef.value?.add({
-      title: 'No hay actualizaciones',
-      message: 'La aplicación se encuentra en la última versión',
-      type: 'success'
-    });
     loading.value = false;
     updateStatus.value = {
       checking: false,
       downloading: false,
       ready: false,
-      message: 'test'
+      message: ''
     };
   });
-  window.autoUpdater.onUpdateDownloaded((_event, info) => {
+  window.autoUpdater.onUpdateDownloaded(async (_event, info) => {
     updateStatus.value = {
       checking: false,
       downloading: false,
       ready: true,
       message: 'Actualización completada. Reiniciando en 5 segundos...'     
     };
+    //Establecer justUpdated en cfg
+    await set('justUpdated', true);
     let time = 5;
     const interval = setInterval(() => {
       time--;
@@ -159,11 +176,39 @@ onMounted(async () => {
       checking: false,
       downloading: false,
       ready: false,
-      message: 'test'
+      message: ''
     };
   });
 
 })
+
+async function checkForUpdates() {
+  try {
+    await window.autoUpdater.checkForUpdates();
+  } catch (error) {
+    console.error('Error al comprobar actualizaciones:', error);
+    updateStatus.value = {
+      checking: false,
+      downloading: false,
+      ready: true,
+      message: ''
+    };
+    loading.value = false;
+  }
+}
+
+async function mustCheckForUpdates() {
+  const lastOpenedCfg = await get('lastOpened')
+  const target = new Date(lastOpenedCfg);
+  const now = new Date();
+
+  const diffMs = now - target;
+  const diffMinutes = diffMs / 1000 / 60;
+
+  const updateCooldownMinutes = await get('updateCooldownMinutes')
+  if(updateCooldownMinutes>720) updateCooldownMinutes = 720; //Max 12h
+  return diffMinutes >= updateCooldownMinutes;
+}
 
 </script>
 

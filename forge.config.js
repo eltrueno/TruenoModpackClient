@@ -7,13 +7,13 @@ module.exports = {
     asar: true,
     icon: path.resolve(__dirname, "./public/icon/icon"),
     name: "TruenoModpackClient",
-    executableName: "Trueno Modpack",
+    executableName: "TruenoModpack",
     productName: "Trueno Modpack",
     appBundleId: "es.eltrueno.modpack.client",
     win32metadata: {
       CompanyName: "Raúl Jiménez (el_trueno)",
       FileDescription: "Trueno Modpack",
-      OriginalFilename: "Trueno Modpack.exe",
+      OriginalFilename: "TruenoModpack.exe",
       ProductName: "Trueno Modpack",
       InternalName: "TruenoModpackClient"
     },
@@ -39,17 +39,17 @@ module.exports = {
       name: '@electron-forge/maker-squirrel',
       config: {
         name: "TruenoModpackClient",
-        exe: "Trueno Modpack.exe",
+        exe: "TruenoModpack.exe",
         setupExe: "TruenoModpackSetup.exe",
         certificateFile: './eltrueno-app-certificate.pfx',
         authors: 'Raúl Jiménez (el_trueno)',
-        iconUrl: path.resolve(__dirname, "./public/icon/icon.ico"),
+        iconUrl: "https://eltrueno.github.io/truenomodpack/icon.ico",
         setupIcon: path.resolve(__dirname, "./public/icon/icon.ico"),
         loadingGif: path.resolve(__dirname, "./public/TruenoModpack-loading-animation.gif"),
         title: "Trueno Modpack",
         productName: "Trueno Modpack",
         remoteReleases: "https://truenomodpack.eltrueno.es/update/win32/:version",
-        noDelta: false
+        noDelta: true
       },
     }
   ],
