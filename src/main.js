@@ -8,8 +8,9 @@ const lockfile = require('proper-lockfile');
 
 const { calculateFileHash, ensureDir, fileExists, ensureFile } = require('./utils/file-utils.js')
 const loaderInstaller = require('./minecraft/loader-installer.js');
-const minecraftProfile = require('./minecraft/minecraft-profile.js')
+const minecraftProfile = require('./minecraft/minecraft-profile.js');
 const { openMinecraftLauncher, getMinecraftLaunchers } = require('./minecraft/launcher.js');
+const minecraftOptions = require('./minecraft/options.js');
 
 const autoUpdater = require('./utils/autoUpdater.js');
 const configManager = require('./utils/configManager.js');
@@ -183,9 +184,11 @@ function getModpackDataPath(modpackId) {
   return path.join(getModpackBasePath(modpackId), 'minecraftdata');
 }
 
+const TRUENOMODPACK_BASE_URL = "https://s3.truenomodpack.eltrueno.es"
+
 const getRemoteModpackList = async () => {
   try {
-    const response = await axios.get("https://eltrueno.github.io/truenomodpack/modpacks.json");
+    const response = await axios.get(TRUENOMODPACK_BASE_URL + "/modpacks.json");
     return response.data;
   } catch (error) {
     console.error('Error getting modpack list:', error);
@@ -195,7 +198,7 @@ const getRemoteModpackList = async () => {
 
 const getRemoteModpack = async (modpackid) => {
   try {
-    const response = await axios.get("https://eltrueno.github.io/truenomodpack/" + modpackid + "/truenomodpack.json");
+    const response = await axios.get(TRUENOMODPACK_BASE_URL + "/" + modpackid + "/truenomodpack.json");
     return response.data;
   } catch (error) {
     console.error('Error getting remote modpack:', error);
@@ -366,7 +369,7 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
 
     const versionId = 'truenomodpack-' + modpackId + "-" + remote.minecraft_version;
 
-    let makeProfile = false;
+    let makeProfile = await configManager.get('userPreferences.createProfile');
 
     //Instalar archivos de loader (en la .minecraft)
     if (remote.loader_files && Object.keys(remote.loader_files).length > 0) {
@@ -462,9 +465,12 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
     // Guardar manifiesto local
     onProgress({ stage: 'finalizing', progress: 95, message: 'Aplicando cambios...' });
 
+    const cfgCopyOptions = await configManager.get('userPreferences.copyOptions');
+    if (cfgCopyOptions) {
+      await minecraftOptions.copyOptions(installPath);
+    }
+
     const actualLocalManifest = await existsModpackJsonFile(modpackId) ? await getLocalModpack(modpackId) : null;
-
-
 
     const nowDate = new Date().toISOString();
     const localManifest = {

@@ -6,7 +6,9 @@ const { app } = require('electron');
 const axios = require('axios');
 
 const { getMinecraftPath } = require('./common.js')
-const {ensureFile} = require('../utils/file-utils.js')
+const { ensureFile } = require('../utils/file-utils.js')
+
+const configManager = require('../utils/configManager.js');
 
 
 /**
@@ -23,7 +25,7 @@ function getLauncherProfilesPath() {
  */
 async function readLauncherProfiles() {
   const profilesPath = getLauncherProfilesPath();
-  
+
   try {
     const data = await fs.readFile(profilesPath, 'utf8');
     return JSON.parse(data);
@@ -45,7 +47,7 @@ function createDefaultLauncherProfiles() {
     settings: {
       enableSnapshots: false,
       enableAdvanced: false,
-      profileSorting : "ByLastPlayed"
+      profileSorting: "ByLastPlayed"
     },
     version: 5
   };
@@ -56,10 +58,10 @@ function createDefaultLauncherProfiles() {
  */
 async function writeLauncherProfiles(profiles) {
   const profilesPath = getLauncherProfilesPath();
-  
+
   // Crear directorio .minecraft si no existe
   await ensureFile(path.dirname(profilesPath))
-  
+
   // Guardar con formato bonito
   await fs.writeFile(profilesPath, JSON.stringify(profiles, null, 2));
 }
@@ -73,7 +75,7 @@ async function imageUrlToBase64(url) {
     url: url,
     responseType: 'arraybuffer'
   });
-  
+
   const base64 = Buffer.from(response.data).toString('base64');
   const dataUrl = `data:image/png;base64,${base64}`;
   return dataUrl
@@ -91,11 +93,11 @@ function generateProfileId(modpackId) {
  */
 async function getProfileIcon(modpackId) {
   let base64img = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-  try{
-    base64img = await imageUrlToBase64('https://eltrueno.github.io/truenomodpack/'+modpackId+'/icon.png');
-  }catch(err){
+  try {
+    base64img = await imageUrlToBase64('https://eltrueno.github.io/truenomodpack/' + modpackId + '/icon.png');
+  } catch (err) {
     console.error("Error getting modpack icon", err)
-  }finally{
+  } finally {
     return base64img;
   }
   //return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -120,17 +122,19 @@ async function createOrUpdateProfile(modpackId, modpackName, versionId, modpackP
 
     const profileId = existingProfileId || generateProfileId(modpackId);
 
+    const cfgMaxRam = await configManager.get('userPreferences.maxRamMB');
+
     const profile = {
       name: modpackName,
       type: 'custom',
-      created: existingProfileId ? 
-        launcherProfiles.profiles[existingProfileId].created : 
+      created: existingProfileId ?
+        launcherProfiles.profiles[existingProfileId].created :
         new Date().toISOString(),
       lastUsed: new Date().toISOString(),
       icon: await getProfileIcon(modpackId),
       lastVersionId: versionId,
       gameDir: modpackPath,
-      javaArgs: '-Xmx8G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M'
+      javaArgs: '-Xmx' + cfgMaxRam / 1024 + 'G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M'
     };
 
     // Añadir/actualizar el perfil
