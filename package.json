@@ -1,7 +1,7 @@
 {
   "name": "truenomodpackclient",
   "productName": "Trueno Modpack",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Installer for Trueno's Minecraft modpacks",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -42,6 +42,7 @@
   "dependencies": {
     "axios": "^1.13.2",
     "electron-squirrel-startup": "^1.0.1",
+    "p-limit": "^3.1.0",
     "proper-lockfile": "^4.1.2",
     "vue": "^3.5.13"
   }

@@ -205,7 +205,7 @@ async function mustCheckForUpdates() {
   const diffMs = now - target;
   const diffMinutes = diffMs / 1000 / 60;
 
-  const updateCooldownMinutes = await get('updateCooldownMinutes')
+  let updateCooldownMinutes = await get('updateCooldownMinutes')
   if(updateCooldownMinutes>720) updateCooldownMinutes = 720; //Max 12h
   return diffMinutes >= updateCooldownMinutes;
 }

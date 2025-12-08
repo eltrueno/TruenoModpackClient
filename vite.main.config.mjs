@@ -23,6 +23,14 @@ export default defineConfig(({ mode }) => ({
         {
           src: normalizePath('src/utils/**/*'),
           dest: 'utils'
+        },
+        {
+          src: 'src/download/**/*',
+          dest: 'download'
+        },
+        {
+          src: normalizePath('src/download/**/*'),
+          dest: 'download'
         }
       ]
     })

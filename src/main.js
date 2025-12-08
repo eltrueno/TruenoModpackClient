@@ -14,6 +14,7 @@ const minecraftOptions = require('./minecraft/options.js');
 
 const autoUpdater = require('./utils/autoUpdater.js');
 const configManager = require('./utils/configManager.js');
+const { DownloadManager } = require('./download/downloadManager.js');
 
 function checkInternet() {
   return new Promise((resolve) => {
@@ -424,6 +425,7 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
     }
 
     // Descargar archivos nuevos/modificados
+    /*
     let downloadedSize = 0;
     for (let i = 0; i < operations.download.length; i++) {
       const file = operations.download[i];
@@ -452,7 +454,7 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
         });
       });
 
-      // Verificar hash del archivo descargado
+
       const actualHash = await calculateFileHash(fullPath);
       if (actualHash !== file.hash) {
         throw new Error(`Hash mismatch for ${file.path}. Expected: ${file.hash}, Got: ${actualHash}`);
@@ -460,7 +462,66 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
 
       downloadedSize += file.size;
       processedFiles++;
-    }
+    }*/
+
+    // Descargar archivos nuevos/modificados (con sistema paralelo)
+    let downloadedSize = 0;
+    const downloadManager = new DownloadManager(100); // 100 descargas simultáneas
+
+    // Preparar lista de descargas
+    const downloadList = operations.download.map(file => ({
+      url: file.url,
+      destPath: path.join(installPath, file.path),
+      hash: file.hash,
+      size: file.size,
+      path: file.path
+    }));
+
+    onProgress({
+      stage: 'downloading',
+      progress: 25,
+      message: 'Iniciando descargas...',
+      currentFile: 0,
+      totalFiles: downloadList.length
+    });
+
+    // Descargar en paralelo
+    await downloadManager.downloadFiles(
+      downloadList,
+      // onFileComplete: cuando termina cada archivo
+      async (index, file, error) => {
+        if (error) {
+          console.error(`Error downloading ${file.path}:`, error);
+          return;
+        }
+
+        // Verificar hash del archivo descargado
+        const fullPath = file.destPath;
+        const actualHash = await calculateFileHash(fullPath);
+        if (actualHash !== file.hash) {
+          throw new Error(`Hash mismatch for ${file.path}. Expected: ${file.hash}, Got: ${actualHash}`);
+        }
+
+        downloadedSize += file.size;
+        processedFiles++;
+
+        // Actualizar progreso
+        const completedFiles = downloadManager.stats.completed;
+        const progressPercent = 25 + Math.round((completedFiles / downloadList.length) * 70);
+
+        onProgress({
+          stage: 'downloading',
+          progress: progressPercent,
+          message: `Descargado ${file.path}`,
+          currentFile: completedFiles,
+          totalFiles: downloadList.length,
+          downloadedSize: downloadedSize,
+          totalSize: operations.totalSize
+        });
+      },
+      // onFileProgress: progreso individual de cada archivo (opcional)
+      null
+    );
 
     // Guardar manifiesto local
     onProgress({ stage: 'finalizing', progress: 95, message: 'Aplicando cambios...' });
