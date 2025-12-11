@@ -3,8 +3,11 @@
         <div class="card overflow-hidden  bg-gradient-to-r from-blue-600 to-violet-600 w-72 h-64 shadow-lg hover:shadow-xl cursor-pointer">
             <figure class="p-1">
                 <img
-                :src=modpack_image_url
-                @error="defaultTopImage"
+                v-lazy="{
+                    src: modpack_image_url,
+                    loading: '/modpack-logo-placeholder.png',
+                    error: '/modpack-logo-placeholder.png'
+                }"
                 alt="Modpack logo"
                 class="h-full w-full object-contain pointer-events-none select-none group-hover:select-none" />
             </figure>
@@ -23,9 +26,5 @@ const props = defineProps({
   modpack_desc: String,
   modpack_image_url: String
 })
-
-function defaultTopImage(e){
-    e.target.src = '/modpack-logo-placeholder.png'
-}
 
 </script>

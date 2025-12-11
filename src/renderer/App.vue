@@ -79,6 +79,9 @@ onMounted(async () => {
   //Iniciar config
   await init();
 
+  online.value = window.appStatus?.isOffline === false;
+  if (online.value) loading.value = false;
+
   window.electron?.ipcRenderer?.on?.('app-closing', async () => {
     await save(); // Esto sincroniza todo antes de cerrar
   });
@@ -234,7 +237,7 @@ async function mustCheckForUpdates() {
       </div>
     </div>
     <Modpack class="py-2" modpack_name="Depresivos 2K25" modpack_id="depresivos2k25" modpack_desc="Modpack fabric version 1.20.1" 
-    modpack_image_url="https://eltrueno.github.io/truenomodpack/depresivos2k25/logo.png" />
+    modpack_image_url="https://s3.truenomodpack.eltrueno.es/depresivos2k25/logo.png" />
     <ActionSection modpack_name="Depresivos 2K25" modpack_id="depresivos2k25" v-model:processing="subprocessing" />
   </div>
   <footer class="footer footer-center bg-base-300 text-base-content p-1 absolute bottom-0 z-50 text-xs">

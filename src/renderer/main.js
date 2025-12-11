@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import './tailwind.css'
 import App from './App.vue'
+import VueLazyload from 'vue-lazyload'
 
 const app = createApp(App);
 
@@ -10,4 +11,5 @@ window.appStatus?.onStatus(({ isOffline }) => {
   app.config.globalProperties.$status.isOffline = isOffline;
 });
 
+app.use(VueLazyload)
 app.mount('#app')

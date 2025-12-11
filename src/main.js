@@ -8,13 +8,13 @@ const lockfile = require('proper-lockfile');
 
 const { calculateFileHash, ensureDir, fileExists, ensureFile } = require('./utils/file-utils.js')
 const loaderInstaller = require('./minecraft/loader-installer.js');
-const minecraftProfile = require('./minecraft/minecraft-profile.js');
+const minecraftProfile = require('./minecraft/profile.js');
 const { openMinecraftLauncher, getMinecraftLaunchers } = require('./minecraft/launcher.js');
 const minecraftOptions = require('./minecraft/options.js');
 
 const autoUpdater = require('./utils/autoUpdater.js');
 const configManager = require('./utils/configManager.js');
-const { DownloadManager, AdaptiveDownloadManager, EnhancedDownloadManager } = require('./download/downloadManager.js');
+const { AdaptiveDownloadManager } = require('./download/downloadManager.js');
 const logger = require('./utils/logger.js');
 
 function checkInternet() {

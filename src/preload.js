@@ -6,8 +6,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('appAPI', {
   openMinecraftLauncher: (launcher) => ipcRenderer.invoke('open-minecraft-launcher', launcher),
   getMinecraftLaunchers: () => ipcRenderer.invoke('get-minecraft-launchers'),
-  onProgress: (callback) => ipcRenderer.on('installation-progress', (event, data) => callback(data)),
-  removeProgressListener: () => ipcRenderer.removeAllListeners('installation-progress'),
+  onProgress: (callback) => ipcRenderer.on('on-progress', (event, data) => callback(data)),
+  removeProgressListener: () => ipcRenderer.removeAllListeners('on-progress'),
   //Online status?
   onStatus: (callback) => ipcRenderer.on("status", callback),
   // Toast API
