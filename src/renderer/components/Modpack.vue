@@ -5,8 +5,8 @@
                 <img
                 v-lazy="{
                     src: modpack_image_url,
-                    loading: '/modpack-logo-placeholder.png',
-                    error: '/modpack-logo-placeholder.png'
+                    loading: placeholderImage,
+                    error: placeholderImage
                 }"
                 alt="Modpack logo"
                 class="h-full w-full object-contain pointer-events-none select-none group-hover:select-none" />
@@ -20,11 +20,15 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+
 const props = defineProps({
   modpack_id: String,
   modpack_name: String,
   modpack_desc: String,
   modpack_image_url: String
 })
+
+const placeholderImage = new URL('/modpack-logo-placeholder.png', import.meta.url).href
 
 </script>
