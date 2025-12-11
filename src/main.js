@@ -14,7 +14,8 @@ const minecraftOptions = require('./minecraft/options.js');
 
 const autoUpdater = require('./utils/autoUpdater.js');
 const configManager = require('./utils/configManager.js');
-const { DownloadManager } = require('./download/downloadManager.js');
+const { DownloadManager, AdaptiveDownloadManager, EnhancedDownloadManager } = require('./download/downloadManager.js');
+const logger = require('./utils/logger.js');
 
 function checkInternet() {
   return new Promise((resolve) => {
@@ -25,7 +26,7 @@ function checkInternet() {
 }
 
 process.on('uncaughtException', (err) => {
-  console.error(err);
+  logger.error('Uncaught Exception: ', err);
   showToast('error', 'Error inesperado', 'Ha ocurrido un error inesperado. Para más información, consulta el log.');
 });
 
@@ -79,7 +80,7 @@ const createWindow = async () => {
   mainWindow.removeMenu()
 
   // Open the DevTools.
-  //mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -135,7 +136,7 @@ app.on('will-quit', async () => {
     hashSum.update(fileBuffer);
     return 'sha256:' + hashSum.digest('hex');
   } catch (error) {
-    console.error('Error calculating hash:', error);
+    logger.error('Error calculating hash:', error);
     return null;
   }
 }*/
@@ -164,7 +165,7 @@ async function ensureDir(dirPath) {
     await fs.mkdir(dirPath, { recursive: true });
     return true
   } catch (error) {
-    console.error('Error creating directory:', error);
+    logger.error('Error creating directory:', error);
     return false
   }
 }*/
@@ -192,7 +193,7 @@ const getRemoteModpackList = async () => {
     const response = await axios.get(TRUENOMODPACK_BASE_URL + "/modpacks.json");
     return response.data;
   } catch (error) {
-    console.error('Error getting modpack list:', error);
+    logger.error('Error getting modpack list:', error);
     throw error;
   }
 }
@@ -202,7 +203,7 @@ const getRemoteModpack = async (modpackid) => {
     const response = await axios.get(TRUENOMODPACK_BASE_URL + "/" + modpackid + "/truenomodpack.json");
     return response.data;
   } catch (error) {
-    console.error('Error getting remote modpack:', error);
+    logger.error('Error getting remote modpack:', error);
     showToast('warning', 'Error de conexión', 'No se ha podido conectar con el servidor. Por favor, revisa tu conexión y prueba de nuevo más tarde');
     throw error;
   }
@@ -226,7 +227,7 @@ async function getLocalModpack(modpackid) {
     await ensureDir(path.dirname(manifestPath));
     await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
   } catch (error) {
-    console.error('Error saving local modpack:', error);
+    logger.error('Error saving local modpack:', error);
     throw error;
   }
 }*/
@@ -285,7 +286,7 @@ async function calculateSyncOperations(modpackId, remoteModpack) {
         path: filePath,
         url: remoteFile.url,
         hash: remoteFile.hash,
-        size: remoteFile.size,
+        size: Number(remoteFile.size),
         reason: 'new'
       });
       operations.totalSize += remoteFile.size;
@@ -295,7 +296,7 @@ async function calculateSyncOperations(modpackId, remoteModpack) {
         path: filePath,
         url: remoteFile.url,
         hash: remoteFile.hash,
-        size: remoteFile.size,
+        size: Number(remoteFile.size),
         reason: 'modified'
       });
       operations.totalSize += remoteFile.size;
@@ -307,7 +308,7 @@ async function calculateSyncOperations(modpackId, remoteModpack) {
           path: filePath,
           url: remoteFile.url,
           hash: remoteFile.hash,
-          size: remoteFile.size,
+          size: Number(remoteFile.size),
           reason: 'corrupted'
         });
         operations.totalSize += remoteFile.size;
@@ -328,34 +329,6 @@ async function calculateSyncOperations(modpackId, remoteModpack) {
   return { operations, remote, local };
 }
 
-async function downloadFile(url, destPath, onProgress) {
-  await ensureDir(path.dirname(destPath));
-  const writer = fsSync.createWriteStream(destPath);
-
-  const response = await axios({
-    method: 'get',
-    url: url,
-    responseType: 'stream',
-  });
-
-  const totalLength = parseInt(response.headers['content-length'], 10);
-  let downloadedLength = 0;
-
-  response.data.on('data', (chunk) => {
-    downloadedLength += chunk.length;
-    if (onProgress && totalLength) {
-      const progress = Math.round((downloadedLength / totalLength) * 100);
-      onProgress(progress, downloadedLength, totalLength);
-    }
-  });
-
-  response.data.pipe(writer);
-
-  return new Promise((resolve, reject) => {
-    writer.on('finish', resolve);
-    writer.on('error', reject);
-  });
-}
 
 async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
   try {
@@ -392,9 +365,9 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
               totalFiles: loaderProgress.totalFiles
             });
           });
-          if (loaderResult.success) console.log("Loader instalado correctamente"); makeProfile = true;
+          if (loaderResult.success) logger.info("Loader instalado correctamente"); makeProfile = true;
         } catch (loaderError) {
-          console.error('Error instalando loader:', loaderError)
+          logger.error('Error instalando loader:', loaderError)
           showToast('error', 'Error durante la instalación', 'Ha ocurrido un error inesperado durante la instalación del loader. Por favor, prueba de nuevo más tarde.');
         }
       }
@@ -409,9 +382,9 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
       const fullPath = path.join(installPath, filePath);
       try {
         await fs.unlink(fullPath);
-        console.log(`Deleted: ${filePath}`);
+        logger.info(`Deleted: ${filePath}`);
       } catch (error) {
-        console.error(`Error deleting ${filePath}:`, error);
+        logger.error(`Error deleting ${filePath}:`, error);
       }
       processedFiles++;
       const progress = Math.round((processedFiles / totalFiles) * 100);
@@ -466,14 +439,15 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
 
     // Descargar archivos nuevos/modificados (con sistema paralelo)
     let downloadedSize = 0;
-    const downloadManager = new DownloadManager(100); // 100 descargas simultáneas
+    const downloadManager = new AdaptiveDownloadManager(100, 15);
+    //const downloadManager = new EnhancedDownloadManager(100, 10, 3);
 
     // Preparar lista de descargas
     const downloadList = operations.download.map(file => ({
       url: file.url,
       destPath: path.join(installPath, file.path),
       hash: file.hash,
-      size: file.size,
+      size: Number(file.size),
       path: file.path
     }));
 
@@ -486,12 +460,12 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
     });
 
     // Descargar en paralelo
-    await downloadManager.downloadFiles(
+    /*await downloadManager.downloadFiles(
       downloadList,
       // onFileComplete: cuando termina cada archivo
       async (index, file, error) => {
         if (error) {
-          console.error(`Error downloading ${file.path}:`, error);
+          logger.error(`Error downloading ${file.path}:`, error);
           return;
         }
 
@@ -521,10 +495,58 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
       },
       // onFileProgress: progreso individual de cada archivo (opcional)
       null
+    );*/
+    const downloadedFiles = [];
+
+    await downloadManager.downloadFiles(
+      downloadList,
+      async (index, file, error) => {
+        if (error) {
+          logger.error(`Error downloading ${file.path}:`, error);
+          return;
+        }
+
+        // Solo guardar para verificar después
+        downloadedFiles.push(file);
+
+        downloadedSize += file.size;
+        processedFiles++;
+
+        //const completedFiles = downloadManager.stats.completed;
+        //const progressPercent = 25 + Math.round((completedFiles / downloadList.length) * 70);
+
+        onProgress({
+          stage: 'downloading',
+          lastDownloadedFile: file.path
+        });
+      },
+      async (index, file, stats) => {
+        onProgress({
+          stage: "downloading",
+          progress: 25 + Math.round((downloadManager.stats.completed / downloadList.length) * 70),
+          message: `Descargando archivos del modpack...`,
+          currentFile: downloadManager.stats.completed,
+          totalFiles: downloadList.length,
+          downloadedSize: stats.totalDownloaded,
+          totalSize: stats.totalBytes,
+          speedMBps: stats.speedMBps,
+          etaSeconds: stats.etaSeconds
+        });
+      }
     );
 
+    onProgress({ stage: 'verifying', progress: 95, message: 'Verificando integridad...' });
+
+    for (const file of downloadedFiles) {
+      const actualHash = await calculateFileHash(file.destPath);
+      if (actualHash !== file.hash) {
+        throw new Error(`Hash mismatch for ${file.path}. Expected: ${file.hash}, Got: ${actualHash}`);
+      }
+    }
+
+
     // Guardar manifiesto local
-    onProgress({ stage: 'finalizing', progress: 95, message: 'Aplicando cambios...' });
+    onProgress({ stage: 'finalizing', progress: 99, message: 'Aplicando cambios...' });
 
     const cfgCopyOptions = await configManager.get('userPreferences.copyOptions');
     if (cfgCopyOptions) {
@@ -583,7 +605,7 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
     };
 
   } catch (error) {
-    console.error('Error durante la instalación:', error);
+    logger.error('Error durante la instalación:', error);
     showToast('error', 'Error durante la instalación', 'Ha ocurrido un error inesperado durante la instalación del modpack. Por favor, prueba de nuevo más tarde.');
     throw error;
   }
@@ -666,7 +688,7 @@ ipcMain.handle('calculate-sync-operations', async (event, modpackId) => {
 
 ipcMain.handle('install-or-update-modpack', async (event, modpackId) => {
   const reply = await installOrUpdateModpack(modpackId, (progressData) => {
-    mainWindow.webContents.send('installation-progress', progressData);
+    mainWindow.webContents.send('on-progress', progressData);
   });
   if (reply.success) showToast('success', 'Instalación correcta', 'Se ha instalado el modpack correctamente');
   return reply;

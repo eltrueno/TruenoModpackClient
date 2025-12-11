@@ -4,24 +4,26 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('appAPI', {
+  openMinecraftLauncher: (launcher) => ipcRenderer.invoke('open-minecraft-launcher', launcher),
+  getMinecraftLaunchers: () => ipcRenderer.invoke('get-minecraft-launchers'),
+  onProgress: (callback) => ipcRenderer.on('installation-progress', (event, data) => callback(data)),
+  removeProgressListener: () => ipcRenderer.removeAllListeners('installation-progress'),
+  //Online status?
+  onStatus: (callback) => ipcRenderer.on("status", callback),
+  // Toast API
+  showToast: (type, title, message, duration) => ipcRenderer.send('show-toast', { type, title, message, duration }),
+  onToast: (callback) => ipcRenderer.on('show-toast', callback),
+  getRamInfo: () => ipcRenderer.invoke('get-ram-info')
+});
+
+contextBridge.exposeInMainWorld('modpackAPI', {
   isModpackInstalled: (modpackid) => ipcRenderer.invoke('is-modpack-installed', modpackid),
   getLocalModpackJson: (modpackid) => ipcRenderer.invoke('get-modpack-local', modpackid),
   getRemoteModpackJson: (modpackid) => ipcRenderer.invoke('get-modpack-remote', modpackid),
   calculateSyncOperations: (modpackId) => ipcRenderer.invoke('calculate-sync-operations', modpackId),
   installOrUpdateModpack: (modpackId) => ipcRenderer.invoke('install-or-update-modpack', modpackId),
   verifyModpackIntegrity: (modpackId) => ipcRenderer.invoke('verify-modpack-integrity', modpackId),
-  openMinecraftLauncher: (launcher) => ipcRenderer.invoke('open-minecraft-launcher', launcher),
-  getMinecraftLaunchers: () => ipcRenderer.invoke('get-minecraft-launchers'),
-  onInstallationProgress: (callback) => ipcRenderer.on('installation-progress', (event, data) => callback(data)),
-  removeInstallationProgressListener: () => ipcRenderer.removeAllListeners('installation-progress'),
-  //Online status?
-  onStatus: (callback) => ipcRenderer.on("status", callback),
-  //Open native file explorer
-  openModpackPath: (modpackId) => ipcRenderer.invoke("open-modpack-path", modpackId),
-  // Toast API
-  showToast: (type, title, message, duration) => ipcRenderer.send('show-toast', { type, title, message, duration }),
-  onToast: (callback) => ipcRenderer.on('show-toast', callback),
-  getRamInfo: () => ipcRenderer.invoke('get-ram-info')
+  openModpackPath: (modpackId) => ipcRenderer.invoke("open-modpack-path", modpackId)
 });
 
 contextBridge.exposeInMainWorld('autoUpdater', {

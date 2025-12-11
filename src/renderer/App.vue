@@ -237,7 +237,7 @@ async function mustCheckForUpdates() {
     modpack_image_url="https://eltrueno.github.io/truenomodpack/depresivos2k25/logo.png" />
     <ActionSection modpack_name="Depresivos 2K25" modpack_id="depresivos2k25" v-model:processing="subprocessing" />
   </div>
-  <footer class="footer footer-center bg-base-300 text-base-content p-2 absolute bottom-0 z-50">
+  <footer class="footer footer-center bg-base-300 text-base-content p-1 absolute bottom-0 z-50 text-xs">
     <aside>
       <p>Trueno Modpack v{{ APP_VERSION }} - Desarrollado con ❤️ por <a href="https://github.com/eltrueno">el_trueno</a></p>
     </aside>

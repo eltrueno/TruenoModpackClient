@@ -19,16 +19,24 @@
 
             <!-- Progress bar durante instalación -->
             <div v-if="isInstalling" class="w-full my-4 py-2">
-                <div class="text-sm my-1">{{ progressMessage }}</div>
+                <div class="text-sm my-1 w-full flex justify-between items-baseline">
+                    <div>
+                        <div>{{ progressMessage }}</div>
+                        <span v-if="progressData.lastDownloadedFile && progressData.stage=='downloading'" class="text-xs opacity-50 -mt-1 overflow-clip">
+                            {{ progressData.lastDownloadedFile  }}
+                        </span>
+                    </div>
+                    <span>{{ formatBytes(progressLastSize) }} / {{ formatBytes(progressTotalSize) }}</span>
+                </div>
                 <progress v-if="currentStage==1" class="progress progress-info w-full" style="height: 0.8rem;"></progress>
                 <progress v-else class="progress progress-info w-full" :value="progressPercent" max="100" style="height: 0.8rem;"></progress>
                 <div class="w-full flex justify-between items-center mt-1 text-xs">
-                    <div>
-                        {{ progressPercent }}% 
-                        <span v-if="progressTotalSize>0">
-                            - {{ formatBytes(progressLastSize) }} / {{ formatBytes(progressTotalSize) }}
+                    <div v-if="progressTotalSize>0">
+                        <span>
+                            {{ progressSpeed.toFixed(2) }}MB/s - Tiempo restante: {{ formatEta(progressEta) }}
                         </span>
                     </div>
+                    <span>{{ progressPercent }}%</span>
                     <span v-if="progressData.currentFile">
                     Archivo {{ progressData.currentFile }} de {{ progressData.totalFiles }}
                     </span>
@@ -387,19 +395,35 @@ const isInstalling = ref(false)
 const error = ref(null)
 
 const installedLaunchers = ref([])
-const selectedLauncher = ref('')
 const launchersNamesMap = {
     'classic': 'Oficial Clásico',
     'uwp': 'Oficial Windows App'
 }
 
+const progressData = ref({})
+
 const progressPercent = ref(0)
 const progressMessage = ref("")
 const currentStageStr = ref("")
 const currentStage = ref(0)
-const progressData = ref({})
+
+const progressSpeed = ref(0)
+const progressEta = ref(0)
 const progressLastSize = ref(0)
 const progressTotalSize = ref(0)
+let progressLastUpdate = 0
+function throttleUiUpdate() {
+    const now = performance.now()
+    if (now - progressLastUpdate < 150) return
+    progressLastUpdate = now
+
+    progressSpeed.value = progressData.value.speedMBps
+    progressEta.value = progressData.value.etaSeconds
+    if(progressData.value.downloadedSize){
+        progressLastSize.value = progressData.value.downloadedSize
+        if(!progressTotalSize.value)progressTotalSize.value = progressData.value.totalSize
+    }
+}
 
 const showOptions = ref(false)
 const hoverOptions = ref(false)
@@ -427,16 +451,26 @@ function formatBytes(bytes, decimals = 2) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+function formatEta(seconds) {
+    if (!seconds || seconds <= 0) return "—";
+
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+}
+
 // Actualizar progreso de instalación
 const handleProgress = (data) => {
-    progressData.value = data;
-    progressPercent.value = data.progress || 0;
-    progressMessage.value = data.message || "Procesando...";
+    Object.assign(progressData.value, data);
+    progressPercent.value = progressData.value.progress || 0;
+    progressMessage.value = progressData.value.message || "Procesando...";
     
-    if(data.downloadedSize){
-        progressLastSize.value = data.downloadedSize
-        progressTotalSize.value = data.totalSize
-    }
+    /*if(progressData.value.downloadedSize){
+        progressLastSize.value = progressData.value.downloadedSize
+        if(!progressTotalSize.value)progressTotalSize.value = progressData.value.totalSize
+    }*/
 
     // Actualizar stage actual
     switch(data.stage) {
@@ -454,7 +488,7 @@ const handleProgress = (data) => {
             break;
         case 'downloading':
             currentStage.value = 2;
-            currentStageStr.value = "Descargando..."
+            currentStageStr.value = "Descargando... ("+formatEta(progressEta.value)+" Restantes)";
             if(modpackStatus.value=='uninstalled') currentStage.value = 3
             break;
         case 'finalizing':
@@ -468,6 +502,7 @@ const handleProgress = (data) => {
             if(modpackStatus.value=='uninstalled') currentStage.value = 4
             break;
     }
+    throttleUiUpdate()
 }
 
 // Verificar estado inicial del modpack
@@ -477,7 +512,7 @@ async function checkModpackStatus() {
         startProcessing();
         error.value = null;
 
-        const isInstalled = await window.appAPI.isModpackInstalled(props.modpack_id);
+        const isInstalled = await window.modpackAPI.isModpackInstalled(props.modpack_id);
         
         if (!isInstalled) {
             modpackStatus.value = 'uninstalled';
@@ -488,8 +523,8 @@ async function checkModpackStatus() {
 
         // Obtener versiones local y remota
         const [localJson, remoteJson] = await Promise.all([
-            window.appAPI.getLocalModpackJson(props.modpack_id),
-            window.appAPI.getRemoteModpackJson(props.modpack_id)
+            window.modpackAPI.getLocalModpackJson(props.modpack_id),
+            window.modpackAPI.getRemoteModpackJson(props.modpack_id)
         ]);
 
 
@@ -526,7 +561,7 @@ async function handleInstall() {
         error.value = null;
         currentStage.value = 0;
 
-        await window.appAPI.installOrUpdateModpack(props.modpack_id);
+        await window.modpackAPI.installOrUpdateModpack(props.modpack_id);
 
         // Actualizar estado después de la instalación
         await checkModpackStatus();
@@ -562,7 +597,7 @@ async function handleUpdate() {
         error.value = null;
         currentStage.value = 0;
 
-        await window.appAPI.installOrUpdateModpack(props.modpack_id);
+        await window.modpackAPI.installOrUpdateModpack(props.modpack_id);
 
         // Actualizar estado después de la actualización
         await checkModpackStatus();
@@ -579,16 +614,16 @@ async function handleUpdate() {
 
 // Abrir launcher de Minecraft
 async function handleLaunch() {
-    if(!selectedLauncher.value){
+    if(!config.userPreferences.preferedLauncher){
         globalDialog.showError('Ningún launcher encontrado', 'No se ha podido encontrar ningún launcher compatible instalado. Por favor, instala un launcher compatible para poder abrirlo.');
         return;
     }
-    await window.appAPI.openMinecraftLauncher(selectedLauncher.value);
+    await window.appAPI.openMinecraftLauncher(config.userPreferences.preferedLauncher);
 }
 
 // Abrir carpeta de instalación
 async function handleOpenModpackPath() {
-    await window.appAPI.openModpackPath(props.modpack_id);
+    await window.modpackAPI.openModpackPath(props.modpack_id);
 }
 
 // Verificar integridad
@@ -596,7 +631,7 @@ async function verifyIntegrity() {
     try {
         loading.value = true;
         startProcessing()
-        const result = await window.appAPI.verifyModpackIntegrity(props.modpack_id);
+        const result = await window.modpackAPI.verifyModpackIntegrity(props.modpack_id);
         
         if (!result.valid) {
             let message = result.error
@@ -624,7 +659,7 @@ async function verifyIntegrity() {
 
 onBeforeMount(async () => {
     // Registrar listener de progreso
-    window.appAPI.onInstallationProgress(handleProgress);
+    window.appAPI.onProgress(handleProgress);
     
     // Verificar estado inicial
     await checkModpackStatus();
@@ -644,6 +679,6 @@ onBeforeMount(async () => {
 
 onUnmounted(() => {
     // Limpiar listener
-    window.appAPI.removeInstallationProgressListener();
+    window.appAPI.removeProgressListener();
 })
 </script>
