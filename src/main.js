@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const fsSync = require('fs');
 const axios = require('axios');
 const dns = require("dns");
 const lockfile = require('proper-lockfile');

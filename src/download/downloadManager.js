@@ -13,6 +13,13 @@ const axiosInstance = axios.create({
     maxRedirects: 5,
 });
 
+// Aumentar el límite de listeners para AbortSignal
+const { setMaxListeners } = require('events');
+if (typeof setMaxListeners === 'function') {
+    // Para Node.js >= 15.4.0
+    setMaxListeners(0); // 0 = sin límite
+}
+
 async function ensureDir(dir) {
     try {
         await fs.mkdir(dir, { recursive: true });
@@ -22,15 +29,55 @@ async function ensureDir(dir) {
 }
 
 /**
- * Descarga un archivo individual con reintentos
+ * Intenta eliminar un archivo con reintentos (para manejar locks temporales)
+ */
+async function safeUnlink(filePath, maxAttempts = 3) {
+    for (let i = 0; i < maxAttempts; i++) {
+        try {
+            if (fsSync.existsSync(filePath)) {
+                await fs.unlink(filePath);
+            }
+            return true;
+        } catch (error) {
+            if (i === maxAttempts - 1) {
+                logger.warn(`Could not delete file after ${maxAttempts} attempts: ${path.basename(filePath)}`);
+                return false;
+            }
+            // Esperar antes de reintentar
+            await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
+        }
+    }
+    return false;
+}
+
+/**
+ * Descarga un archivo individual con reintentos y manejo robusto de errores
  */
 async function downloadFile(url, destPath, onProgress, retries = 3, signal = null) {
     const fileName = path.basename(destPath);
+    const tempPath = destPath + '.tmp';
+
     for (let attempt = 0; attempt < retries; attempt++) {
         if (signal?.aborted) throw new Error('Download cancelled');
+
+        let writer = null;
+
         try {
+            // Asegurar que el directorio existe
             await ensureDir(path.dirname(destPath));
-            const writer = fsSync.createWriteStream(destPath);
+
+            // Limpiar archivos temporales anteriores
+            await safeUnlink(tempPath);
+
+            // Si es un reintento, esperar un poco más
+            if (attempt > 0) {
+                const waitTime = Math.min(2000 * Math.pow(2, attempt), 15000);
+                logger.warn(`Retry ${attempt}/${retries} for ${fileName} in ${waitTime}ms`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
+
+            // Descargar a archivo temporal
+            writer = fsSync.createWriteStream(tempPath, { flags: 'w' });
 
             const response = await axiosInstance({
                 method: 'get',
@@ -52,17 +99,47 @@ async function downloadFile(url, destPath, onProgress, retries = 3, signal = nul
 
             response.data.pipe(writer);
 
-            await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-                response.data.on('error', reject);
-                if (signal) {
-                    signal.addEventListener('abort', () => {
-                        writer.destroy();
-                        reject(new Error('Download cancelled'));
-                    }, { once: true });
+            // Manejar la señal de cancelación
+            const abortHandler = signal ? () => {
+                writer.destroy();
+            } : null;
+
+            if (signal && abortHandler) {
+                signal.addEventListener('abort', abortHandler, { once: true });
+            }
+
+            try {
+                await new Promise((resolve, reject) => {
+                    writer.on('finish', resolve);
+                    writer.on('error', reject);
+                    response.data.on('error', reject);
+                });
+            } finally {
+                // Limpiar el listener si existe
+                if (signal && abortHandler) {
+                    signal.removeEventListener('abort', abortHandler);
                 }
-            });
+            }
+
+            // Verificar si fue cancelado después de completar
+            if (signal?.aborted) {
+                throw new Error('Download cancelled');
+            }
+
+            // Cerrar el stream y esperar un momento
+            writer.close();
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Si el archivo destino existe, eliminarlo primero
+            await safeUnlink(destPath);
+
+            // Renombrar de temporal a definitivo
+            await fs.rename(tempPath, destPath);
+
+            // Verificar que el renombrado funcionó
+            if (!fsSync.existsSync(destPath)) {
+                throw new Error('File rename failed');
+            }
 
             if (attempt > 0) {
                 logger.info(`Download succeeded after ${attempt + 1} attempts: ${fileName}`);
@@ -71,35 +148,51 @@ async function downloadFile(url, destPath, onProgress, retries = 3, signal = nul
             return; // Éxito
 
         } catch (error) {
-            // Check cancel explicitly
-            if (signal?.aborted || axios.isCancel(error) || error.message === 'Download cancelled') throw new Error('Download cancelled');
-
-            try {
-                if (fsSync.existsSync(destPath)) {
-                    fsSync.unlinkSync(destPath);
+            // Cerrar writer si está abierto
+            if (writer && !writer.destroyed) {
+                try {
+                    writer.destroy();
+                } catch (e) {
+                    // Ignorar errores al destruir
                 }
-            } catch (e) {
-                logger.warn(`Failed to clean partial file: ${fileName}`, e.message);
             }
+
+            // Check cancel explicitly
+            if (signal?.aborted || axios.isCancel(error) || error.message === 'Download cancelled') {
+                await safeUnlink(tempPath);
+                throw new Error('Download cancelled');
+            }
+
+            // Limpiar archivos temporales y parciales
+            await safeUnlink(tempPath);
+            await safeUnlink(destPath);
+
+            const isPermError = error.code === 'EPERM' ||
+                error.code === 'EBUSY' ||
+                error.code === 'EACCES';
 
             if (attempt === retries - 1) {
                 logger.error(`Download failed after ${retries} attempts: ${fileName}`, {
                     url,
                     error: error.message,
-                    code: error.code
+                    code: error.code,
+                    isPermError
                 });
-                throw new Error(`Failed to download ${url} after ${retries} attempts: ${error.message}`);
+                throw new Error(`Failed to download ${fileName} after ${retries} attempts: ${error.message}`);
             }
 
-            const waitTime = Math.min(2000 * Math.pow(2, attempt), 30000);
-            logger.warn(`Retry ${attempt + 1}/${retries} for ${fileName} in ${waitTime}ms - Error: ${error.message}`);
+            // Espera más larga para errores de permisos
+            const baseWait = isPermError ? 5000 : 2000;
+            const waitTime = Math.min(baseWait * Math.pow(2, attempt), 20000);
+
+            logger.warn(`Retry ${attempt + 1}/${retries} for ${fileName} in ${waitTime}ms - Error: ${error.code || error.message}`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
         }
     }
 }
 
 /**
- * Manager de descargas paralelas
+ * Manager de descargas paralelas básico
  */
 class DownloadManager {
     constructor(concurrency = 100) {
@@ -126,13 +219,12 @@ class DownloadManager {
         this.stats.failed = 0;
         this.stats.startTime = Date.now();
 
-        // Reset controller if it was aborted previously
         if (this.controller.signal.aborted) {
             this.controller = new AbortController();
         }
 
         this.paused = false;
-        this.lastLoggedPercent = 0
+        this.lastLoggedPercent = 0;
 
         logger.info(`Starting download of ${filesList.length} files`);
 
@@ -178,7 +270,7 @@ class DownloadManager {
                         onFileProgress(index, file, progress, downloaded, total);
                     }
                 },
-                3, // retries
+                3,
                 this.controller.signal
             );
 
@@ -196,9 +288,8 @@ class DownloadManager {
                 logger.info(`Progress: ${percent}% (${this.stats.completed}/${this.stats.total}) - ${rate} files/s - Elapsed: ${elapsed}s`);
             }
 
-            // PASAR file e index correctamente
             if (onFileComplete) {
-                onFileComplete(index, file, null); // (index, file, error=null)
+                onFileComplete(index, file, null);
             }
 
         } catch (error) {
@@ -207,9 +298,8 @@ class DownloadManager {
 
             if (!isCancelled) logger.error(`Failed to download ${file.url}:`, error.message);
 
-            // PASAR file e index incluso en error
             if (onFileComplete) {
-                onFileComplete(index, file, error); // (index, file, error)
+                onFileComplete(index, file, error);
             }
 
             throw error;
@@ -242,15 +332,20 @@ class DownloadManager {
     }
 }
 
+/**
+ * Manager adaptativo con mejor manejo de concurrencia y errores
+ */
 class AdaptiveDownloadManager extends DownloadManager {
-    constructor(initialConcurrency = 100, minConcurrency = 30, maxFileRetries = 3) {
+    constructor(initialConcurrency = 100, minConcurrency = 15, maxFileRetries = 5) {
         super(initialConcurrency);
         this.initialConcurrency = initialConcurrency;
         this.minConcurrency = minConcurrency;
         this.maxFileRetries = maxFileRetries;
         this.completedBytes = 0;
         this.totalBytes = 0;
-        this.consecutiveErrors = 0; //para detectar problemas sistémicos
+        this.consecutiveErrors = 0;
+        this.permissionErrors = 0;
+        this.lastConcurrencyChange = 0; // Para evitar logs repetidos
     }
 
     async downloadFiles(filesList, onFileComplete, onFileProgress) {
@@ -259,24 +354,39 @@ class AdaptiveDownloadManager extends DownloadManager {
         this.stats.failed = 0;
         this.stats.startTime = Date.now();
 
-        // Reset controller for new batch
         if (this.controller.signal.aborted) {
             this.controller = new AbortController();
         }
 
         this.lastLoggedPercent = 0;
         this.consecutiveErrors = 0;
+        this.permissionErrors = 0;
+        this.lastConcurrencyChange = 0;
 
         // Calcular tamaño total
         this.totalBytes = filesList.reduce((acc, f) => acc + (f.size || 0), 0);
         this.completedBytes = 0;
 
-        // Ordenar por tamaño (grandes primero)
+        // Ordenar por tamaño (grandes primero para optimizar tiempo)
         const sortedFiles = [...filesList].sort((a, b) => b.size - a.size);
 
         logger.info(`Starting download of ${filesList.length} files (${(this.totalBytes / 1024 / 1024).toFixed(2)}MB) with adaptive concurrency`);
 
-        // Cola de reintentos
+        // Pre-crear todos los directorios necesarios
+        const directories = new Set();
+        for (const file of sortedFiles) {
+            directories.add(path.dirname(file.destPath));
+        }
+
+        logger.info(`Pre-creating ${directories.size} directories...`);
+        for (const dir of directories) {
+            await ensureDir(dir);
+        }
+
+        // Pequeña pausa para que el sistema de archivos se sincronice
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Cola de archivos fallidos para reintento final
         const failedFiles = [];
 
         // Dividir en lotes
@@ -284,16 +394,38 @@ class AdaptiveDownloadManager extends DownloadManager {
         let currentConcurrency = this.initialConcurrency;
 
         for (let i = 0; i < sortedFiles.length; i += batchSize) {
-            if (this.controller.signal.aborted) break; // Break loop if cancelled
+            if (this.controller.signal.aborted) break;
 
             const batch = sortedFiles.slice(i, i + batchSize);
             const remainingPercent = ((sortedFiles.length - i) / sortedFiles.length) * 100;
 
-            // Reducir concurrencia en el último 20% o si hay muchos errores
-            if ((remainingPercent < 20 || this.consecutiveErrors > 10) && currentConcurrency !== this.minConcurrency) {
-                currentConcurrency = Math.max(this.minConcurrency, Math.floor(this.initialConcurrency * 0.5));
-                logger.info(`Reducing concurrency to ${currentConcurrency} (remaining: ${remainingPercent.toFixed(0)}%, errors: ${this.consecutiveErrors})`);
-                this.limit = pLimit(currentConcurrency);
+            // Reducir concurrencia si hay muchos errores de permisos
+            if (this.permissionErrors > 5 && currentConcurrency > this.minConcurrency) {
+                const newConcurrency = Math.max(this.minConcurrency, Math.floor(currentConcurrency * 0.6));
+                if (newConcurrency !== currentConcurrency) {
+                    currentConcurrency = newConcurrency;
+                    logger.warn(`Permission errors detected (${this.permissionErrors}), reducing concurrency to ${currentConcurrency}`);
+                    this.limit = pLimit(currentConcurrency);
+                    this.permissionErrors = 0; // Reset counter
+                    this.lastConcurrencyChange = Date.now();
+                }
+            }
+
+            // Reducir en el último 20% o si hay muchos errores consecutivos
+            const shouldReduce = (remainingPercent < 20 || this.consecutiveErrors > 10) &&
+                currentConcurrency > this.minConcurrency;
+
+            // Solo cambiar si ha pasado al menos 5 segundos desde el último cambio
+            const timeSinceLastChange = Date.now() - this.lastConcurrencyChange;
+
+            if (shouldReduce && timeSinceLastChange > 5000) {
+                const newConcurrency = Math.max(this.minConcurrency, Math.floor(this.initialConcurrency * 0.5));
+                if (newConcurrency !== currentConcurrency) {
+                    currentConcurrency = newConcurrency;
+                    logger.info(`Reducing concurrency to ${currentConcurrency} (remaining: ${remainingPercent.toFixed(0)}%, errors: ${this.consecutiveErrors})`);
+                    this.limit = pLimit(currentConcurrency);
+                    this.lastConcurrencyChange = Date.now();
+                }
             }
 
             // Descargar lote
@@ -306,7 +438,6 @@ class AdaptiveDownloadManager extends DownloadManager {
                     const fileWithIndex = { ...file, originalIndex: i + batchIndex };
                     const result = await this.downloadWithRetries(fileWithIndex, onFileComplete, onFileProgress);
 
-                    // Si falló después de todos los reintentos, guardar para reintento global
                     if (!result.success) {
                         failedFiles.push(fileWithIndex);
                     }
@@ -318,24 +449,24 @@ class AdaptiveDownloadManager extends DownloadManager {
             await Promise.allSettled(downloads);
 
             // Pausa si hay muchos errores consecutivos
-            if (this.consecutiveErrors > 5) {
-                logger.warn(`High error rate detected, pausing for 3 seconds...`);
-                await new Promise(resolve => setTimeout(resolve, 3000));
+            if (this.consecutiveErrors > 8) {
+                logger.warn(`High error rate detected (${this.consecutiveErrors}), pausing for 5 seconds...`);
+                await new Promise(resolve => setTimeout(resolve, 5000));
                 this.consecutiveErrors = 0;
             }
         }
 
-        // REINTENTAR ARCHIVOS FALLIDOS (último intento con concurrencia baja)
+        // Reintentar archivos fallidos con concurrencia muy baja
         if (failedFiles.length > 0 && !this.controller.signal.aborted) {
-            logger.warn(`Retrying ${failedFiles.length} failed files with reduced concurrency...`);
-            this.limit = pLimit(10); // Solo 10 conexiones para reintentos finales
+            logger.warn(`Retrying ${failedFiles.length} failed files with minimal concurrency...`);
+            this.limit = pLimit(5); // Solo 5 conexiones simultáneas
 
             const retryDownloads = failedFiles.map(file =>
                 this.limit(async () => {
                     if (this.controller.signal.aborted) return { success: false };
 
-                    // Último intento sin tracking de bytes para simplificar
-                    return await this.downloadWithRetries(file, onFileComplete, null, 1);
+                    // Reintento final más agresivo
+                    return await this.downloadWithRetries(file, onFileComplete, onFileProgress, 3);
                 })
             );
 
@@ -370,20 +501,28 @@ class AdaptiveDownloadManager extends DownloadManager {
             try {
                 await this.downloadWithByteTracking(file, index, onFileComplete, onFileProgress);
 
-                // Éxito - resetear contador de errores consecutivos
+                // Éxito - resetear contador de errores
                 this.consecutiveErrors = Math.max(0, this.consecutiveErrors - 1);
 
                 return { success: true, file };
 
             } catch (error) {
-                if (this.controller.signal.aborted || error.message === 'Download cancelled') return { success: false, file };
+                if (this.controller.signal.aborted || error.message === 'Download cancelled') {
+                    return { success: false, file };
+                }
 
                 this.consecutiveErrors++;
 
-                const isLastAttempt = attempt === retries - 1;
                 const isPermError = error.message?.includes('EPERM') ||
                     error.message?.includes('EBUSY') ||
+                    error.message?.includes('EACCES') ||
                     error.message?.includes('locked');
+
+                if (isPermError) {
+                    this.permissionErrors++;
+                }
+
+                const isLastAttempt = attempt === retries - 1;
 
                 if (isLastAttempt) {
                     logger.error(`File failed after ${retries} manager retries: ${file.path}`);
@@ -391,18 +530,11 @@ class AdaptiveDownloadManager extends DownloadManager {
                 }
 
                 // Backoff más largo para errores de permisos
-                const baseWait = isPermError ? 5000 : 2000;
-                const waitTime = Math.min(baseWait * Math.pow(2, attempt), 15000);
+                const baseWait = isPermError ? 8000 : 3000;
+                const waitTime = Math.min(baseWait * Math.pow(1.5, attempt), 30000);
 
-                logger.warn(`Manager retry ${attempt + 1}/${retries} for ${file.path} in ${waitTime}ms`);
+                logger.warn(`Manager retry ${attempt + 1}/${retries} for ${file.path} in ${waitTime}ms (${isPermError ? 'PERM ERROR' : error.code || error.message})`);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
-
-                // Si es error de permisos, reducir concurrencia
-                if (isPermError && this.limit._concurrency > this.minConcurrency) {
-                    const newConcurrency = Math.max(this.minConcurrency, Math.floor(this.limit._concurrency * 0.7));
-                    this.limit = pLimit(newConcurrency);
-                    logger.warn(` Permission error detected, reducing concurrency to ${newConcurrency}`);
-                }
             }
         }
 
@@ -417,15 +549,13 @@ class AdaptiveDownloadManager extends DownloadManager {
                 file.url,
                 file.destPath,
                 (progress, downloaded, total) => {
-                    // Calcular incremento desde último update
                     const chunkBytes = downloaded - fileDownloadedBytes;
                     fileDownloadedBytes = downloaded;
                     this.completedBytes += chunkBytes;
 
-                    // Calcular estadísticas
                     if (onFileProgress) {
                         const elapsed = (Date.now() - this.stats.startTime) / 1000;
-                        const speed = this.completedBytes / elapsed; // bytes/s
+                        const speed = this.completedBytes / elapsed;
                         const remainingBytes = this.totalBytes - this.completedBytes;
                         const eta = remainingBytes / (speed || 1);
 
@@ -441,13 +571,12 @@ class AdaptiveDownloadManager extends DownloadManager {
                         });
                     }
                 },
-                3, // retries
+                4, // 4 reintentos en downloadFile
                 this.controller.signal
             );
 
             this.stats.completed++;
 
-            // Log cada 10%
             const percent = Math.floor((this.stats.completed / this.stats.total) * 100);
             const rounded = Math.floor(percent / 10) * 10;
 
@@ -467,17 +596,18 @@ class AdaptiveDownloadManager extends DownloadManager {
             this.stats.failed++;
             const isCancelled = error.message === 'Download cancelled' || axios.isCancel(error);
 
-            if (!isCancelled) logger.error(`Download tracking failed for ${file.path}:`, error.message);
+            if (!isCancelled) {
+                logger.error(`Download tracking failed for ${file.path}:`, error.message);
+            }
 
             if (onFileComplete) {
                 onFileComplete(index, file, error);
             }
 
-            throw error; // Propagar para que downloadWithRetries lo maneje
+            throw error;
         }
     }
 }
-
 
 module.exports = {
     DownloadManager,
