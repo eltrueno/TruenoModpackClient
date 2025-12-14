@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('modpackAPI', {
   getRemoteModpackJson: (modpackid) => ipcRenderer.invoke('get-modpack-remote', modpackid),
   calculateSyncOperations: (modpackId) => ipcRenderer.invoke('calculate-sync-operations', modpackId),
   installOrUpdateModpack: (modpackId) => ipcRenderer.invoke('install-or-update-modpack', modpackId),
+  cancelInstallOrUpdate: (modpackId) => ipcRenderer.invoke('cancel-install-or-update', modpackId),
   verifyModpackIntegrity: (modpackId) => ipcRenderer.invoke('verify-modpack-integrity', modpackId),
   openModpackPath: (modpackId) => ipcRenderer.invoke("open-modpack-path", modpackId)
 });

@@ -3,7 +3,7 @@
         <div class="flex flex-col w-full mx-48 space-y-4">
             
             <!-- Progress steps -->
-            <div v-if="isInstalling" class="w-full flex justify-center align-middle">
+            <div v-if="isProcessing" class="w-full flex justify-center align-middle">
                 <ul class="steps w-full" v-if="modpackStatus=='outdated'">
                     <li class="step" :class="{ 'step-primary': currentStage >= 1 }">Comprobación</li>
                     <li class="step" :class="{ 'step-primary': currentStage >= 2 }">Descarga de archivos</li>
@@ -18,7 +18,7 @@
             </div>
 
             <!-- Progress bar durante instalación -->
-            <div v-if="isInstalling" class="w-full my-4 py-2">
+            <div v-if="isProcessing" class="w-full my-4 py-2">
                 <div class="text-sm my-1 w-full flex justify-between items-baseline">
                     <div>
                         <div>{{ progressMessage }}</div>
@@ -43,12 +43,35 @@
                 </div>
             </div>
 
-            <!-- Botón instalando -->
-            <button class="btn btn-block btn-circle btn-primary no-animation cursor-wait shadow-md" v-if="isInstalling">
-                <div class="radial-progress font-light text-sm" :aria-valuenow="progressPercent" role="progressbar" 
-                :style="{ '--value': progressPercent, '--size': '2.7rem', '--thickness': '7%'}">{{progressPercent}}%</div>
-                {{ currentStageStr }}
-            </button>
+
+            <div v-if="isProcessing" class="relative flex">
+                <!-- Botón instalando -->
+                <button class="btn btn-block btn-circle btn-primary cursor-wait shadow-md hover:shadow-lg flex-1"
+                :class="{ 'invisible': hoveredCancel && hoverCancel }">
+                    <div class="radial-progress font-light text-sm" :aria-valuenow="progressPercent" role="progressbar" 
+                    :style="{ '--value': progressPercent, '--size': '2.7rem', '--thickness': '7%'}">{{progressPercent}}%</div>
+                    {{ currentStageStr }}
+                </button>
+
+                <!-- Botón cancelar -->
+                <button
+                    class="btn btn-error shadow-md hover:shadow-lg rounded-r-full rounded-l-none
+                        transition-all duration-400 ease-out
+                        absolute right-0 top-0 h-full
+                        w-[55px] hover:w-full hover:btn-circle z-20 flex items-center gap-2"
+                    @mouseenter="hoverCancel=true"
+                    @mouseleave="hoverCancel=false"
+                    @transitionend="onCancelAnimationEnd"
+                    @click="handleCancel"
+                    >
+                    <svg class="w-[24px] h-[24px]" fill="currentColor" viewBox="0 0 24 24">
+                        <path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm7.707-3.707a1 1 0 0 0-1.414 1.414L10.586 12l-2.293 2.293a1 1 0 1 0 1.414 1.414L12 13.414l2.293 2.293a1 1 0 0 0 1.414-1.414L13.414 12l2.293-2.293a1 1 0 0 0-1.414-1.414L12 10.586 9.707 8.293Z"/>
+                    </svg>
+
+                    <span v-if="hoveredCancel && hoverCancel" class="whitespace-nowrap">Cancelar</span>
+                </button>
+
+            </div>
 
             <!-- Botón cargando inicial -->
             <button class="btn btn-block btn-circle btn-primary no-animation cursor-wait" v-else-if="loading">
@@ -56,7 +79,7 @@
                 Verificando...
             </button>
 
-            <!-- Botón actualizar (desactualizado) -->
+            <!-- Botón actualizar (desactualizado) 
             <button class="btn btn-block btn-circle btn-primary shadow-md hover:shadow-lg flex-1 rounded-r-none" 
                 v-else-if="modpackStatus=='outdated'"
                 @click="handleUpdate">
@@ -65,6 +88,7 @@
                 </svg>
                 Instalar actualización ({{ remoteModpackVersion.string }})
             </button>
+            -->
 
             <div v-else class="relative flex">
                 <!-- Botón descargar e instalar (no instalado) -->
@@ -76,6 +100,15 @@
                     </svg>
                     Descargar e instalar
                 </button>
+                <!-- Botón actualizar (desactualizado) -->
+                <button class="btn btn-block btn-circle btn-primary shadow-md hover:shadow-lg flex-1 rounded-r-none" 
+                    v-else-if="modpackStatus=='outdated'"
+                    @click="handleUpdate">
+                    <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.651 7.65a7.131 7.131 0 0 0-12.68 3.15M18.001 4v4h-4m-7.652 8.35a7.13 7.13 0 0 0 12.68-3.15M6 20v-4h4"/>
+                    </svg>
+                    Instalar actualización ({{ remoteModpackVersion.string }})
+                </button> 
                 <!-- Botón jugar (actualizado) -->
                 <button class="btn btn-block btn-circle btn-primary shadow-md hover:shadow-lg flex-1 rounded-r-none" 
                     v-else-if="modpackStatus=='updated'"
@@ -83,7 +116,8 @@
                     <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                         <path fill-rule="evenodd" d="M8.6 5.2A1 1 0 0 0 7 6v12a1 1 0 0 0 1.6.8l8-6a1 1 0 0 0 0-1.6l-8-6Z" clip-rule="evenodd"/>
                     </svg>
-                    Abrir lanzador de Minecraft ({{ launchersNamesMap[config.userPreferences.preferedLauncher] }})
+                    <span v-if="launchersNamesMap[config.userPreferences.preferedLauncher]">Abrir lanzador de Minecraft ({{ launchersNamesMap[config.userPreferences.preferedLauncher] }})</span>
+                    <span v-else>Abrir lanzador de Minecraft</span>
                 </button>
 
                 <!-- Botón de opciones -->
@@ -176,8 +210,8 @@
                             </div>
                         </div>
 
-                        <!-- Opciones (instalar) -->
-                        <div class="bg-base-200 rounded-box shadow-xl p-4" v-if="modpackStatus=='uninstalled'">
+                        <!-- Opciones (instalar / actualizar) -->
+                        <div class="bg-base-200 rounded-box shadow-xl p-4" v-if="modpackStatus=='uninstalled' || modpackStatus=='outdated'">
                             <span class="flex gap-3 place-items-center text-base font-semibold tooltip tooltip-bottom w-fit"
                             data-tip="Selecciona la cantidad de memoria RAM máxima que quieres asignarle a Minecraft. Recomiendo como máximo asignarle tres cuartas partes de la RAM total de tu ordenador.">
                                 <svg class="w-5 h5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
@@ -325,7 +359,7 @@
 
 
             <!-- Información de versión -->
-            <div v-if="!loading && !isInstalling && modpackStatus != 'uninstalled'" class="alert relative shadow-md rounded-xl py-2" :class="{
+            <div v-if="!loading && !isProcessing && modpackStatus != 'uninstalled'" class="alert relative shadow-md rounded-xl py-2" :class="{
                 'alert-info': modpackStatus == 'outdated',
                 'alert-success': modpackStatus == 'updated'
             }">
@@ -346,7 +380,7 @@
                         Estás usando la última versión del modpack
                     </div>
                     <div class="tooltip tooltip-left absolute top-0 right-0 p-0" data-tip="Verificar archivos">
-                        <button v-if="modpackStatus == 'updated' && !isInstalling && !loading" class="btn btn-circle btn-ghost"
+                        <button v-if="modpackStatus == 'updated' && !isProcessing && !loading" class="btn btn-circle btn-ghost"
                         @click="verifyIntegrity">
                             <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M9 7V2.221a2 2 0 0 0-.5.365L4.586 6.5a2 2 0 0 0-.365.5H9Z"/>
@@ -391,7 +425,7 @@ function finishProcessing() {
 
 const loading = ref(true)
 const modpackStatus = ref('uninstalled') // 'uninstalled', 'updated', 'outdated'
-const isInstalling = ref(false)
+const isProcessing = ref(false)
 const error = ref(null)
 
 const installedLaunchers = ref([])
@@ -427,6 +461,22 @@ function throttleUiUpdate() {
 
 const showOptions = ref(false)
 const hoverOptions = ref(false)
+
+const hoverCancel = ref(false)
+const hoveredCancel = ref (false)
+
+function onCancelAnimationEnd(e) {
+    // Solo actuamos con la transición del ancho del botón
+    if (e.propertyName !== 'width') return
+
+    if (hoverCancel.value) {
+        // La animación terminó expandiéndose → ocultar botón azul
+        hoveredCancel.value = true
+    } else {
+        // La animación terminó contrayéndose → volver a mostrar botón azul
+        hoveredCancel.value = false
+    }
+}
 
 const systemMemory = ref({})
 
@@ -556,7 +606,7 @@ async function checkModpackStatus() {
 // Instalar modpack
 async function handleInstall() {
     try {
-        isInstalling.value = true;
+        isProcessing.value = true;
         startProcessing()
         error.value = null;
         currentStage.value = 0;
@@ -565,13 +615,13 @@ async function handleInstall() {
 
         // Actualizar estado después de la instalación
         await checkModpackStatus();
-        isInstalling.value = false;
+        isProcessing.value = false;
         finishProcessing();
 
     } catch (err) {
         console.error('Error installing modpack:', err);
         error.value = 'Ha ocurrido un error inesperado durante la instalación';
-        isInstalling.value = false;
+        isProcessing.value = false;
         finishProcessing();
     }
 }
@@ -592,7 +642,7 @@ async function handleUpdate() {
             return;
         }
 
-        isInstalling.value = true;
+        isProcessing.value = true;
         startProcessing()
         error.value = null;
         currentStage.value = 0;
@@ -601,14 +651,23 @@ async function handleUpdate() {
 
         // Actualizar estado después de la actualización
         await checkModpackStatus();
-        isInstalling.value = false;
+        isProcessing.value = false;
         finishProcessing();
 
     } catch (err) {
         console.error('Error updating modpack:', err);
         error.value = 'Ha ocurrido un error inesperado durante la instalación';
-        isInstalling.value = false;
+        isProcessing.value = false;
         finishProcessing();
+    }
+}
+
+// Cancelar instalación
+async function handleCancel() {
+    try {
+        await window.modpackAPI.cancelInstallOrUpdate(props.modpack_id);
+    } catch (err) {
+        console.error('Error cancelling modpack:', err);
     }
 }
 

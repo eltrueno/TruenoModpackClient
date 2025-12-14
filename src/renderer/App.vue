@@ -39,7 +39,7 @@ const svgAnims = computed(() =>
     } 
   }))
 
-const online = ref(false)
+const online = ref(null)
 const loading = ref(true)
 const subprocessing = ref(false)
 
@@ -79,8 +79,8 @@ onMounted(async () => {
   //Iniciar config
   await init();
 
-  online.value = window.appStatus?.isOffline === false;
-  if (online.value) loading.value = false;
+  //online.value = window.appStatus?.isOffline === false;
+  //if (online.value) loading.value = false;
 
   window.electron?.ipcRenderer?.on?.('app-closing', async () => {
     await save(); // Esto sincroniza todo antes de cerrar
@@ -223,12 +223,12 @@ async function mustCheckForUpdates() {
       <progress v-if="updateStatus.downloading" class="progress w-96"></progress>
     </div>
   </div>
-  <div v-if="!loading &&!updating && !online" class="w-screen h-screen flex flex-col justify-center items-center pointer-events-none select-none group-hover:select-none">
+  <div v-if="!loading &&!updating && online===false" class="w-screen h-screen flex flex-col justify-center items-center pointer-events-none select-none group-hover:select-none">
     <span class="font-bold text-4xl">Oops..</span>
     <span class="font-medium text-xl">Parece que no tienes conexión a internet. Vuleve a abrir la aplicación cuando lo hayas solucionado</span>
     <img src="/no-connection.png" class="lg:w-10/12 pointer-events-none select-none group-hover:select-none" alt="An enderman disconnect the internet cable">
   </div>
-  <div class="flex w-full flex-col p-1" v-else-if="!loading && !config.loading && !updating && online">
+  <div class="flex w-full flex-col p-1" v-else-if="!loading && !config.loading && !updating && online===true">
     <div class="flex align-middle justify-center p-2">
       <TruenoModpackSvg id="anim" class="w-36 p-1 overflow-visible mx-2" shadow :animations=svgAnims @mouseenter="svgHovered=true" @mouseleave="svgHovered=false"/>
       <div class="flex flex-col justify-start gap-8">

@@ -17,6 +17,8 @@ const configManager = require('./utils/configManager.js');
 const { AdaptiveDownloadManager } = require('./download/downloadManager.js');
 const logger = require('./utils/logger.js');
 
+const activeInstallations = new Map();
+
 function checkInternet() {
   return new Promise((resolve) => {
     dns.lookup("google.com", (err) => {
@@ -341,9 +343,22 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
     //const { operations, remote } = await calculateSyncOperations(modpackId);
     const installPath = getModpackDataPath(modpackId);
 
+    // Inicializar estado de instalación
+    const installationState = {
+      cancelled: false,
+      downloadManager: null
+    };
+    activeInstallations.set(modpackId, installationState);
+
     const versionId = 'truenomodpack-' + modpackId + "-" + remote.minecraft_version;
 
     let makeProfile = await configManager.get('userPreferences.createProfile');
+
+    // Check cancel status helper
+    const checkCancelled = () => {
+      if (installationState.cancelled) throw new Error('Installation cancelled');
+    };
+    checkCancelled();
 
     //Instalar archivos de loader (en la .minecraft)
     if (remote.loader_files && Object.keys(remote.loader_files).length > 0) {
@@ -353,10 +368,15 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
       });
       const loaderInstalled = await loaderInstaller.isLoaderInstalled(versionId)
       if (!loaderInstalled) {
+        checkCancelled();
         const installMsg = `Instalando ${remote.loader.charAt(0).toUpperCase() + remote.loader.slice(1)} para Minecraft ${remote.minecraft_version} ...`;
         onProgress({ stage: 'loader', progress: 5, message: installMsg });
         try {
-          const loaderResult = await loaderInstaller.installLoader(remote.loader_files, (loaderProgress) => {
+          // Usar AdaptiveDownloadManager para loader
+          const loaderDownloadManager = new AdaptiveDownloadManager(80, 20);
+          installationState.downloadManager = loaderDownloadManager;
+
+          const loaderResult = await loaderInstaller.installLoader(remote.loader_files, loaderDownloadManager, (loaderProgress) => {
             onProgress({
               stage: 'loader',
               progress: 5 + Math.round((loaderProgress.progress || 0) * 0.15),
@@ -365,20 +385,28 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
               totalFiles: loaderProgress.totalFiles
             });
           });
+
+          installationState.downloadManager = null; // Limpiar ref
+          checkCancelled();
+
           if (loaderResult.success) logger.info("Loader instalado correctamente"); makeProfile = true;
         } catch (loaderError) {
+          if (loaderError.message === 'Download cancelled' || installationState.cancelled) throw new Error('Installation cancelled');
           logger.error('Error instalando loader:', loaderError)
           showToast('error', 'Error durante la instalación', 'Ha ocurrido un error inesperado durante la instalación del loader. Por favor, prueba de nuevo más tarde.');
+          throw loaderError;
         }
       }
     }
 
+    checkCancelled();
     const totalFiles = operations.download.length + operations.delete.length;
     let processedFiles = 0;
 
     // Eliminar archivos obsoletos
     onProgress({ stage: 'deleting', progress: 20, message: 'Eliminando archivos obsoletos...' });
     for (const filePath of operations.delete) {
+      checkCancelled();
       const fullPath = path.join(installPath, filePath);
       try {
         await fs.unlink(fullPath);
@@ -397,50 +425,11 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
       });
     }
 
-    // Descargar archivos nuevos/modificados
-    /*
-    let downloadedSize = 0;
-    for (let i = 0; i < operations.download.length; i++) {
-      const file = operations.download[i];
-      const fullPath = path.join(installPath, file.path);
-
-      const baseProgress = 25 + Math.round((i / operations.download.length) * 70); // 30–90
-
-      onProgress({
-        stage: 'downloading',
-        progress: baseProgress,
-        message: `Descargando ${file.path}...`,
-        currentFile: i + 1,
-        totalFiles: operations.download.length
-      });
-
-      await downloadFile(file.url, fullPath, (fileProgress, downloaded, total) => {
-        onProgress({
-          stage: 'downloading',
-          progress: baseProgress,
-          message: `Descargando ${file.path}...`,
-          currentFile: i + 1,
-          totalFiles: operations.download.length,
-          fileProgress,
-          downloadedSize: downloadedSize + downloaded,
-          totalSize: operations.totalSize
-        });
-      });
-
-
-      const actualHash = await calculateFileHash(fullPath);
-      if (actualHash !== file.hash) {
-        throw new Error(`Hash mismatch for ${file.path}. Expected: ${file.hash}, Got: ${actualHash}`);
-      }
-
-      downloadedSize += file.size;
-      processedFiles++;
-    }*/
-
+    checkCancelled();
     // Descargar archivos nuevos/modificados (con sistema paralelo)
     let downloadedSize = 0;
     const downloadManager = new AdaptiveDownloadManager(100, 15);
-    //const downloadManager = new EnhancedDownloadManager(100, 10, 3);
+    installationState.downloadManager = downloadManager;
 
     // Preparar lista de descargas
     const downloadList = operations.download.map(file => ({
@@ -459,43 +448,6 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
       totalFiles: downloadList.length
     });
 
-    // Descargar en paralelo
-    /*await downloadManager.downloadFiles(
-      downloadList,
-      // onFileComplete: cuando termina cada archivo
-      async (index, file, error) => {
-        if (error) {
-          logger.error(`Error downloading ${file.path}:`, error);
-          return;
-        }
-
-        // Verificar hash del archivo descargado
-        const fullPath = file.destPath;
-        const actualHash = await calculateFileHash(fullPath);
-        if (actualHash !== file.hash) {
-          throw new Error(`Hash mismatch for ${file.path}. Expected: ${file.hash}, Got: ${actualHash}`);
-        }
-
-        downloadedSize += file.size;
-        processedFiles++;
-
-        // Actualizar progreso
-        const completedFiles = downloadManager.stats.completed;
-        const progressPercent = 25 + Math.round((completedFiles / downloadList.length) * 70);
-
-        onProgress({
-          stage: 'downloading',
-          progress: progressPercent,
-          message: `Descargado ${file.path}`,
-          currentFile: completedFiles,
-          totalFiles: downloadList.length,
-          downloadedSize: downloadedSize,
-          totalSize: operations.totalSize
-        });
-      },
-      // onFileProgress: progreso individual de cada archivo (opcional)
-      null
-    );*/
     const downloadedFiles = [];
 
     await downloadManager.downloadFiles(
@@ -535,9 +487,13 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
       }
     );
 
+    installationState.downloadManager = null;
+    checkCancelled();
+
     onProgress({ stage: 'verifying', progress: 95, message: 'Verificando integridad...' });
 
     for (const file of downloadedFiles) {
+      checkCancelled();
       const actualHash = await calculateFileHash(file.destPath);
       if (actualHash !== file.hash) {
         throw new Error(`Hash mismatch for ${file.path}. Expected: ${file.hash}, Got: ${actualHash}`);
@@ -555,6 +511,7 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
 
     const actualLocalManifest = await existsModpackJsonFile(modpackId) ? await getLocalModpack(modpackId) : null;
 
+    const totalFilesSize = Object.values(remoteModpack.files).reduce((acc, file) => acc + (file.size || 0), 0);
     const nowDate = new Date().toISOString();
     const localManifest = {
       id: remote.id,
@@ -570,6 +527,7 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
       loader: remote.loader,
       loader_version: remote.loader_version,
       synced_at: nowDate,
+      files_size: totalFilesSize,
       files: {}
     };
 
@@ -605,9 +563,16 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
     };
 
   } catch (error) {
+    if (error.message === 'Installation cancelled' || error.message === 'Download cancelled') {
+      logger.warn('Instalación cancelada por el usuario');
+      // No mostrar toast de error, solo retornar info
+      return { success: false, cancelled: true };
+    }
     logger.error('Error durante la instalación:', error);
     showToast('error', 'Error durante la instalación', 'Ha ocurrido un error inesperado durante la instalación del modpack. Por favor, prueba de nuevo más tarde.');
     throw error;
+  } finally {
+    activeInstallations.delete(modpackId);
   }
 }
 
@@ -691,7 +656,23 @@ ipcMain.handle('install-or-update-modpack', async (event, modpackId) => {
     mainWindow.webContents.send('on-progress', progressData);
   });
   if (reply.success) showToast('success', 'Instalación correcta', 'Se ha instalado el modpack correctamente');
+  else if (reply.cancelled) {
+    // Optional: show info check
+    showToast('info', 'Cancelado', 'Instalación cancelada');
+  }
   return reply;
+});
+
+ipcMain.handle('cancel-install-or-update', async (event, modpackId) => {
+  const state = activeInstallations.get(modpackId);
+  if (state) {
+    state.cancelled = true;
+    if (state.downloadManager) {
+      state.downloadManager.cancel();
+    }
+    return true;
+  }
+  return false;
 });
 
 ipcMain.handle('verify-modpack-integrity', async (event, modpackId) => {

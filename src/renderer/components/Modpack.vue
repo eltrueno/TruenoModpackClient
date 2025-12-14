@@ -20,8 +20,6 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-
 const props = defineProps({
   modpack_id: String,
   modpack_name: String,
