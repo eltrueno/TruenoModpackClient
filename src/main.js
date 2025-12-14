@@ -5,6 +5,7 @@ const fsSync = require('fs');
 const axios = require('axios');
 const dns = require("dns");
 const lockfile = require('proper-lockfile');
+const pLimit = require('p-limit');
 
 const { calculateFileHash, ensureDir, fileExists, ensureFile } = require('./utils/file-utils.js')
 const loaderInstaller = require('./minecraft/loader-installer.js');
@@ -449,6 +450,8 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
     });
 
     const downloadedFiles = [];
+    const hashLimit = pLimit(4);
+    const hashPromises = [];
 
     await downloadManager.downloadFiles(
       downloadList,
@@ -458,8 +461,22 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
           return;
         }
 
-        // Solo guardar para verificar después
-        downloadedFiles.push(file);
+        const fileSnapshot = {
+          path: file.path,
+          destPath: file.destPath,
+          expectedHash: file.hash
+        };
+
+        const hashPromise = hashLimit(async () => {
+          checkCancelled();
+          const actualHash = await calculateFileHash(fileSnapshot.destPath);
+          if (actualHash !== fileSnapshot.expectedHash) {
+            throw new Error(
+              `Hash mismatch for ${fileSnapshot.path}. Expected: ${fileSnapshot.expectedHash}, Got: ${actualHash}`
+            );
+          }
+        });
+        hashPromises.push(hashPromise);
 
         downloadedSize += file.size;
         processedFiles++;
@@ -492,13 +509,15 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
 
     onProgress({ stage: 'verifying', progress: 95, message: 'Verificando integridad...' });
 
-    for (const file of downloadedFiles) {
+    await Promise.all(hashPromises);
+
+    /*or (const file of downloadedFiles) {
       checkCancelled();
       const actualHash = await calculateFileHash(file.destPath);
       if (actualHash !== file.hash) {
         throw new Error(`Hash mismatch for ${file.path}. Expected: ${file.hash}, Got: ${actualHash}`);
       }
-    }
+    }*/
 
 
     // Guardar manifiesto local
