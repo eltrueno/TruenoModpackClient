@@ -2,7 +2,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 
-const { ileExists } = require('../utils/file-utils.js')
+const { fileExists } = require('../utils/file-utils.js')
 const { getMinecraftPath } = require('./common.js')
 
 /**
