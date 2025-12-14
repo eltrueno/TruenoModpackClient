@@ -449,7 +449,6 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
       totalFiles: downloadList.length
     });
 
-    const downloadedFiles = [];
     const hashLimit = pLimit(4);
     const hashPromises = [];
 
@@ -481,9 +480,6 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
         downloadedSize += file.size;
         processedFiles++;
 
-        //const completedFiles = downloadManager.stats.completed;
-        //const progressPercent = 25 + Math.round((completedFiles / downloadList.length) * 70);
-
         onProgress({
           stage: 'downloading',
           lastDownloadedFile: file.path
@@ -509,15 +505,8 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
 
     onProgress({ stage: 'verifying', progress: 95, message: 'Verificando integridad...' });
 
+    // Check hashes
     await Promise.all(hashPromises);
-
-    /*or (const file of downloadedFiles) {
-      checkCancelled();
-      const actualHash = await calculateFileHash(file.destPath);
-      if (actualHash !== file.hash) {
-        throw new Error(`Hash mismatch for ${file.path}. Expected: ${file.hash}, Got: ${actualHash}`);
-      }
-    }*/
 
 
     // Guardar manifiesto local
