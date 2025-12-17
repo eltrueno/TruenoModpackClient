@@ -251,113 +251,6 @@
                 </transition>
             </div>
 
-            <!--
-            <div v-else-if="modpackStatus=='updated'" class="relative flex">
-   
-                <button class="btn btn-block btn-circle btn-primary shadow-md hover:shadow-lg flex-1 rounded-r-none" 
-                    @click="handleLaunch">
-                    <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                        <path fill-rule="evenodd" d="M8.6 5.2A1 1 0 0 0 7 6v12a1 1 0 0 0 1.6.8l8-6a1 1 0 0 0 0-1.6l-8-6Z" clip-rule="evenodd"/>
-                    </svg>
-                    Abrir lanzador de Minecraft ({{ launchersNamesMap[selectedLauncher] }})
-                </button>
-                    
- 
-                <button class="btn btn-primary shadow-md hover:shadow-lg rounded-r-full rounded-l-none border-l border-primary-content/20 tooltip tooltip-top 
-                    " :data-tip="showOptions ? 'Ocultar opciones' : 'Desplegar opciones'"
-                    @click="showOptions = !showOptions" @mouseenter="hoverOptions = true" @mouseleave="hoverOptions = false">
-                    <svg class="w-5 h-5 transition-transform duration-300" :class="{ 'rotate-90': showOptions }" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                        <path fill-rule="evenodd" d="M9.586 2.586A2 2 0 0 1 11 2h2a2 2 0 0 1 2 2v.089l.473.196.063-.063a2.002 2.002 0 0 1 2.828 0l1.414 1.414a2 2 0 0 1 0 2.827l-.063.064.196.473H20a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-.089l-.196.473.063.063a2.002 2.002 0 0 1 0 2.828l-1.414 1.414a2 2 0 0 1-2.828 0l-.063-.063-.473.196V20a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-.089l-.473-.196-.063.063a2.002 2.002 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.827l.063-.064L4.089 15H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h.09l.195-.473-.063-.063a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.827 0l.064.063L9 4.089V4a2 2 0 0 1 .586-1.414ZM8 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" clip-rule="evenodd"/>
-                    </svg>
-                    <transition
-                        mode="out-in"
-                        enter-active-class="transition-all duration-200 ease-out"
-                        enter-from-class="opacity-0 -translate-y-1"
-                        enter-to-class="opacity-100 translate-y-0"
-                        leave-active-class="transition-all duration-200 ease-in"
-                        leave-from-class="opacity-100 translate-y-0"
-                        leave-to-class="opacity-0 translate-y-1">
-                        <div v-if="hoverOptions" class="ml-1">
-                            <svg v-if="!showOptions" key="down" class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 9-7 7-7-7"/>
-                            </svg>
-                            <svg v-else key="up" class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 15 7-7 7 7"/>
-                            </svg>
-                        </div>
-                    </transition>
-                </button>
-                
-                <transition
-                    enter-active-class="transition-all duration-250 ease-in origin-top"
-                    enter-from-class="scale-y-0"
-                    enter-to-class="scale-y-100"
-                    leave-active-class="transition-all duration-200 ease-in origin-top"
-                    leave-from-class="scale-y-100"
-                    leave-to-class="scale-y-0">
-                    <div v-if="showOptions" class="absolute top-full left-0 right-0 mt-2 z-30">
-                        <div class="bg-base-200 rounded-box shadow-xl p-4">
-                        
-                            <div class="space-y-2">
-                                <div class="flex flex-col px-4 space-y-2">
-                                    <span class="flex gap-3 place-items-center text-base font-semibold">
-                                        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                            <path fill-rule="evenodd" d="M20.337 3.664c.213.212.354.486.404.782.294 1.711.657 5.195-.906 6.76-1.77 1.768-8.485 5.517-10.611 6.683a.987.987 0 0 1-1.176-.173l-.882-.88-.877-.884a.988.988 0 0 1-.173-1.177c1.165-2.126 4.913-8.841 6.682-10.611 1.562-1.563 5.046-1.198 6.757-.904.296.05.57.191.782.404ZM5.407 7.576l4-.341-2.69 4.48-2.857-.334a.996.996 0 0 1-.565-1.694l2.112-2.111Zm11.357 7.02-.34 4-2.111 2.113a.996.996 0 0 1-1.69-.565l-.422-2.807 4.563-2.74Zm.84-6.21a1.99 1.99 0 1 1-3.98 0 1.99 1.99 0 0 1 3.98 0Z" clip-rule="evenodd"/>
-                                        </svg>
-                                        Selecciona el launcher deseado:
-                                    </span>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <label class="flex items-center  justify-center gap-2  cursor-pointer hover:bg-base-300 p-2 rounded-lg" data-tip="¡No tienes instalado este launcher!"
-                                        :class="{ 'tooltip tooltip-bottom': !installedLaunchers.includes('classic') }">
-                                            <input type="radio" name="radioLauncher" class="radio radio-sm radio-primary" value="classic" 
-                                            v-model="selectedLauncher"
-                                            :disabled="!installedLaunchers.includes('classic')"
-
-                                            />
-                                            <span class="text-sm"
-                                            :class="{ 'text-base-content/50': !installedLaunchers.includes('classic') }"
-                                            >Oficial Clásico (exe)</span>
-                                        </label>
-                                        <label class="flex items-center justify-center gap-2 cursor-pointer hover:bg-base-300 p-2 rounded-lg" data-tip="¡No tienes instalado este launcher!"
-                                        :class="{ 'tooltip tooltip-bottom': !installedLaunchers.includes('uwp') }">
-                                            <span class="text-sm"
-                                            :class="{ 'text-base-content/50': !installedLaunchers.includes('uwp') }"
-                                            >Oficial Windows (uwp)</span>
-                                            <input type="radio" name="radioLauncher" class="radio radio-sm radio-primary" value="uwp" 
-                                            v-model="selectedLauncher"
-                                            :disabled="!installedLaunchers.includes('uwp')"/>
-                                        </label>
-                                    </div>
-                                </div>
-                                
-                                <div class="divider my-1"></div>
-                                
-                                <div class="flex flex-row gap-2 justify-around px-2">
-                                    <div class="w-full">
-                                        <button @click="handleOption4" class="btn btn-ghost btn-block justify-center gap-3 text-base-content hover:text-error hover:bg-error/10 text-base font-semibold">
-                                            <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                                <path fill-rule="evenodd" d="M8.586 2.586A2 2 0 0 1 10 2h4a2 2 0 0 1 2 2v2h3a1 1 0 1 1 0 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 0-2h3V4a2 2 0 0 1 .586-1.414ZM10 6h4V4h-4v2Zm1 4a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Zm4 0a1 1 0 1 0-2 0v8a1 1 0 1 0 2 0v-8Z" clip-rule="evenodd"/>
-                                            </svg>
-                                            <span>Desinstalar modpack</span>
-                                        </button>
-                                    </div> 
-                                    <div class="w-full">
-                                        <button @click="handleOpenModpackPath" class="btn btn-ghost btn-block gap-3 text-base-content hover:text-primary hover:bg-primary/10 text-base font-semibold justify-center"> 
-                                            <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                                <path fill-rule="evenodd" d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 .087.586l2.977-7.937A1 1 0 0 1 6 10h12V9a2 2 0 0 0-2-2h-4.532l-1.9-2.28A2 2 0 0 0 8.032 4H4Zm2.693 8H6.5l-3 8H18l3-8H6.693Z" clip-rule="evenodd"/>
-                                            </svg>
-                                            <span>Abrir carpeta de instalación</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </transition>
-            </div>
-        -->
-
-
             <!-- Información de versión -->
             <div v-if="!loading && !isProcessing && modpackStatus != 'uninstalled'" class="alert relative shadow-md rounded-xl py-2" :class="{
                 'alert-info': modpackStatus == 'outdated',
@@ -446,17 +339,62 @@ const progressEta = ref(0)
 const progressLastSize = ref(0)
 const progressTotalSize = ref(0)
 const progressCancelled = ref(false)
-let progressLastUpdate = 0
-function throttleUiUpdate() {
-    const now = performance.now()
-    if (now - progressLastUpdate < 100) return
-    progressLastUpdate = now
+let latestRawData = {}; // Initialize as empty object for merging
+let progressLastUpdate = 0;
 
-    progressSpeed.value = progressData.value.speedMBps || 0
-    progressEta.value = progressData.value.etaSeconds || 0
-    if(progressData.value.downloadedSize){
-        progressLastSize.value = progressData.value.downloadedSize
-        if(!progressTotalSize.value)progressTotalSize.value = progressData.value.totalSize
+function updateUiState() {
+    // Si no hay datos, no hacer nada
+    if (Object.keys(latestRawData).length === 0) return;
+    
+    // Copiar datos al estado reactivo (merge)
+    Object.assign(progressData.value, latestRawData);
+    
+    // Actualizar variables dependientes
+    // Fix: Monotonic progress check to prevent backward jumps
+    const newProgress = latestRawData.progress || 0;
+    if (newProgress >= progressPercent.value || latestRawData.stage === 'complete') {
+         progressPercent.value = newProgress;
+    }
+
+    progressMessage.value = latestRawData.message || progressMessage.value; // Keep old message if missing
+    
+    progressSpeed.value = latestRawData.speedMBps || 0
+    progressEta.value = latestRawData.etaSeconds || 0
+    
+    if(latestRawData.downloadedSize){
+        progressLastSize.value = latestRawData.downloadedSize
+        if(!progressTotalSize.value) progressTotalSize.value = latestRawData.totalSize
+    }
+
+    // Actualizar stage actual
+    switch(latestRawData.stage) {
+        case 'calculating':
+            currentStage.value = 1;
+            currentStageStr.value = "Calculando...";
+            break;
+        case 'loader':
+            currentStage.value = 2;
+            currentStageStr.value = "Instalando Loader..."
+            break;
+        case 'deleting':
+            currentStage.value = 2;
+            currentStageStr.value = "Eliminando archivos obsoletos..."
+            break;
+        case 'downloading':
+            currentStage.value = 2;
+            currentStageStr.value = "Descargando... ("+formatEta(progressEta.value)+" Restantes)";
+            if(modpackStatus.value=='uninstalled') currentStage.value = 3
+            break;
+        case 'finalizing':
+            currentStage.value = 3;
+            currentStageStr.value = "Finalizando..."
+            if(modpackStatus.value=='uninstalled') currentStage.value = 4
+            break;
+        case 'complete':
+            currentStage.value = 3;
+            currentStageStr.value = "Completado"
+            if(modpackStatus.value=='uninstalled') currentStage.value = 4
+            break;
     }
 }
 
@@ -512,48 +450,19 @@ function formatEta(seconds) {
     return `${s}s`;
 }
 
-// Actualizar progreso de instalación
+// Actualizar progreso de instalación (Throttled)
 const handleProgress = (data) => {
-    Object.assign(progressData.value, data);
-    progressPercent.value = progressData.value.progress || 0;
-    progressMessage.value = progressData.value.message || "Procesando...";
+    // Fix: Merge data instead of replacing to preserve transient fields like lastDownloadedFile
+    latestRawData = { ...latestRawData, ...data };
     
-    /*if(progressData.value.downloadedSize){
-        progressLastSize.value = progressData.value.downloadedSize
-        if(!progressTotalSize.value)progressTotalSize.value = progressData.value.totalSize
-    }*/
-
-    // Actualizar stage actual
-    switch(data.stage) {
-        case 'calculating':
-            currentStage.value = 1;
-            currentStageStr.value = "Calculando...";
-            break;
-        case 'loader':
-            currentStage.value = 2;
-            currentStageStr.value = "Instalando Loader..."
-            break;
-        case 'deleting':
-            currentStage.value = 2;
-            currentStageStr.value = "Eliminando archivos obsoletos..."
-            break;
-        case 'downloading':
-            currentStage.value = 2;
-            currentStageStr.value = "Descargando... ("+formatEta(progressEta.value)+" Restantes)";
-            if(modpackStatus.value=='uninstalled') currentStage.value = 3
-            break;
-        case 'finalizing':
-            currentStage.value = 3;
-            currentStageStr.value = "Finalizando..."
-            if(modpackStatus.value=='uninstalled') currentStage.value = 4
-            break;
-        case 'complete':
-            currentStage.value = 3;
-            currentStageStr.value = "Completado"
-            if(modpackStatus.value=='uninstalled') currentStage.value = 4
-            break;
+    const now = performance.now();
+    // Actualizar inmediatamente si es evento de completado o ha pasado el tiempo de throttle (50ms = 20fps)
+    if (data.stage === 'complete' || data.progress >= 100 || now - progressLastUpdate >= 50) {
+        progressLastUpdate = now;
+        updateUiState();
+         // Optional: clear transient data after update if needed, but merging usually safe here
+         // We don't clear latestRawData because we want to stick to the last known state
     }
-    throttleUiUpdate()
 }
 
 // Verificar estado inicial del modpack

@@ -104,7 +104,7 @@ class AdaptiveDownloadManager extends DownloadManager {
         const failedFiles = [];
 
         // Dividir en lotes
-        const batchSize = 100;
+        const batchSize = 500;
         let currentNetworkConcurrency = this.initialNetworkConcurrency;
         let currentIoConcurrency = this.initialIoConcurrency;
 
@@ -134,8 +134,8 @@ class AdaptiveDownloadManager extends DownloadManager {
                 }
             }
 
-            // Reducir en el último 20% o si hay muchos errores consecutivos
-            const shouldReduce = (remainingPercent < 20 || this.consecutiveErrors > 10) &&
+            // Reducir si hay muchos errores consecutivos
+            const shouldReduce = (this.consecutiveErrors > 10) &&
                 currentNetworkConcurrency > this.minConcurrency;
 
             const timeSinceLastChange = Date.now() - this.lastConcurrencyChange;
@@ -187,7 +187,7 @@ class AdaptiveDownloadManager extends DownloadManager {
             }
 
             // Pausa si hay muchos errores consecutivos
-            if (this.consecutiveErrors > 8) {
+            if (this.consecutiveErrors > 8 && !this.controller.signal.aborted && !this.isCancelling) {
                 logger.warn(`High error rate detected (${this.consecutiveErrors}), pausing for 5 seconds...`);
                 await new Promise(resolve => setTimeout(resolve, 5000));
                 this.consecutiveErrors = 0;
@@ -270,13 +270,14 @@ class AdaptiveDownloadManager extends DownloadManager {
             }
 
             // Logging de progreso
+            // Usar porcentaje de bytes para coincidir con la UI
             const percent = Math.floor((this.stats.completed / this.stats.total) * 100);
             const rounded = Math.floor(percent / 10) * 10;
 
             if (rounded > this.lastLoggedPercent && rounded % 10 === 0) {
                 this.lastLoggedPercent = rounded;
-                const progressInfo = this.getProgressInfo();
-                logger.info(`Progress: ${percent}% (${this.stats.completed}/${this.stats.total}) - ${progressInfo.speed} - ETA: ${progressInfo.eta}`);
+                const progressInfo = this.getProgressInfo(0);
+                logger.info(`Progress: ${progressInfo.progressPercent}% (${this.stats.completed}/${this.stats.total}) - ${progressInfo.speed} - ETA: ${progressInfo.eta}`);
             }
 
             if (onFileComplete) {
@@ -287,19 +288,20 @@ class AdaptiveDownloadManager extends DownloadManager {
             this.consecutiveErrors = Math.max(0, this.consecutiveErrors - 1);
 
         } catch (error) {
-            this.stats.failed++;
-            this.consecutiveErrors++;
-
-            const isPermError = error.code === 'EPERM' ||
-                error.code === 'EBUSY' ||
-                error.code === 'EACCES';
-
-            if (isPermError) {
-                this.permissionErrors++;
-            }
-
             const isCancelled = error.message === 'Download cancelled' || this.isCancelling || this.controller.signal.aborted;
+
             if (!isCancelled) {
+                this.stats.failed++;
+                this.consecutiveErrors++;
+
+                const isPermError = error.code === 'EPERM' ||
+                    error.code === 'EBUSY' ||
+                    error.code === 'EACCES';
+
+                if (isPermError) {
+                    this.permissionErrors++;
+                }
+
                 logger.error(`Download failed for ${file.path}:`, error.message);
             }
 
