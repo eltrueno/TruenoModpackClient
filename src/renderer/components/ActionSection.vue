@@ -21,7 +21,7 @@
             <div v-if="isProcessing" class="w-full my-4 py-2">
                 <div class="text-sm my-1 w-full flex justify-between items-baseline">
                     <div>
-                        <div>{{ progressMessage }}</div>
+                        <div>{{ progressCancelled ? 'Cancelando...' : progressMessage }}</div>
                         <span v-if="progressData.lastDownloadedFile && progressData.stage=='downloading'" class="text-xs opacity-50 -mt-1 overflow-clip">
                             {{ progressData.lastDownloadedFile  }}
                         </span>
@@ -50,7 +50,7 @@
                 :class="{ 'invisible': hoveredCancel && hoverCancel }">
                     <div class="radial-progress font-light text-sm" :aria-valuenow="progressPercent" role="progressbar" 
                     :style="{ '--value': progressPercent, '--size': '2.7rem', '--thickness': '7%'}">{{progressPercent}}%</div>
-                    {{ currentStageStr }}
+                    {{ progressCancelled ? 'Cancelando...' : currentStageStr }}
                 </button>
 
                 <!-- Botón cancelar -->
@@ -445,14 +445,15 @@ const progressSpeed = ref(0)
 const progressEta = ref(0)
 const progressLastSize = ref(0)
 const progressTotalSize = ref(0)
+const progressCancelled = ref(false)
 let progressLastUpdate = 0
 function throttleUiUpdate() {
     const now = performance.now()
-    if (now - progressLastUpdate < 150) return
+    if (now - progressLastUpdate < 100) return
     progressLastUpdate = now
 
-    progressSpeed.value = progressData.value.speedMBps
-    progressEta.value = progressData.value.etaSeconds
+    progressSpeed.value = progressData.value.speedMBps || 0
+    progressEta.value = progressData.value.etaSeconds || 0
     if(progressData.value.downloadedSize){
         progressLastSize.value = progressData.value.downloadedSize
         if(!progressTotalSize.value)progressTotalSize.value = progressData.value.totalSize
@@ -607,6 +608,9 @@ async function checkModpackStatus() {
 async function handleInstall() {
     try {
         isProcessing.value = true;
+        progressCancelled.value = false;
+        hoveredCancel.value = false;
+        hoverCancel.value = false;
         startProcessing()
         error.value = null;
         currentStage.value = 0;
@@ -642,6 +646,9 @@ async function handleUpdate() {
             return;
         }
 
+        progressCancelled.value = false;
+        hoveredCancel.value = false;
+        hoverCancel.value = false;
         isProcessing.value = true;
         startProcessing()
         error.value = null;
@@ -664,11 +671,14 @@ async function handleUpdate() {
 
 // Cancelar instalación
 async function handleCancel() {
-    try {
-        await window.modpackAPI.cancelInstallOrUpdate(props.modpack_id);
-    } catch (err) {
-        console.error('Error cancelling modpack:', err);
-    }
+    // No esperar - responder inmediatamente a la UI
+    progressCancelled.value = true;
+    
+    // Iniciar cancelación en background (sin await)
+    window.modpackAPI.cancelInstallOrUpdate(props.modpack_id)
+        .catch(err => {
+            console.error('Error cancelling modpack:', err);
+        });
 }
 
 // Abrir launcher de Minecraft

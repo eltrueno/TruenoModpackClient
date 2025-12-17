@@ -14,7 +14,7 @@ const minecraftOptions = require('./minecraft/options.js');
 
 const autoUpdater = require('./utils/autoUpdater.js');
 const configManager = require('./utils/configManager.js');
-const { AdaptiveDownloadManager } = require('./download/downloadManager.js');
+const { AdaptiveDownloadManager } = require('./download');
 const logger = require('./utils/logger.js');
 
 const activeInstallations = new Map();
@@ -373,7 +373,7 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
         onProgress({ stage: 'loader', progress: 5, message: installMsg });
         try {
           // Usar AdaptiveDownloadManager para loader
-          const loaderDownloadManager = new AdaptiveDownloadManager(80, 20);
+          const loaderDownloadManager = new AdaptiveDownloadManager(55, 15, 8);
           installationState.downloadManager = loaderDownloadManager;
 
           const loaderResult = await loaderInstaller.installLoader(remote.loader_files, loaderDownloadManager, (loaderProgress) => {
@@ -382,7 +382,11 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
               progress: 5 + Math.round((loaderProgress.progress || 0) * 0.15),
               message: installMsg,
               currentFile: loaderProgress.currentFile,
-              totalFiles: loaderProgress.totalFiles
+              totalFiles: loaderProgress.totalFiles,
+              downloadedSize: loaderProgress.downloadedSize,
+              totalSize: loaderProgress.totalSize,
+              speedMBps: loaderProgress.speedMBps,
+              etaSeconds: loaderProgress.etaSeconds
             });
           });
 
@@ -428,7 +432,7 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
     checkCancelled();
     // Descargar archivos nuevos/modificados (con sistema paralelo)
     let downloadedSize = 0;
-    const downloadManager = new AdaptiveDownloadManager(100, 15);
+    const downloadManager = new AdaptiveDownloadManager(60, 20, 10, 3);
     installationState.downloadManager = downloadManager;
 
     // Preparar lista de descargas
@@ -454,7 +458,11 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
     await downloadManager.downloadFiles(
       downloadList,
       async (index, file, error) => {
+        if (installationState.cancelled) return;
+
         if (error) {
+          if (installationState.cancelled) return;
+          if (error.message === 'Download cancelled') return;
           logger.error(`Error downloading ${file.path}:`, error);
           return;
         }
@@ -466,12 +474,18 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
         };
 
         const hashPromise = hashLimit(async () => {
-          checkCancelled();
-          const actualHash = await calculateFileHash(fileSnapshot.destPath);
-          if (actualHash !== fileSnapshot.expectedHash) {
-            throw new Error(
-              `Hash mismatch for ${fileSnapshot.path}. Expected: ${fileSnapshot.expectedHash}, Got: ${actualHash}`
-            );
+          if (installationState.cancelled) return;
+          try {
+            const actualHash = await calculateFileHash(fileSnapshot.destPath);
+            if (actualHash !== fileSnapshot.expectedHash) {
+              if (installationState.cancelled) return;
+              throw new Error(
+                `Hash mismatch for ${fileSnapshot.path}. Expected: ${fileSnapshot.expectedHash}, Got: ${actualHash}`
+              );
+            }
+          } catch (e) {
+            if (installationState.cancelled) return;
+            throw e;
           }
         });
         hashPromises.push(hashPromise);
@@ -487,13 +501,13 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
       async (index, file, stats) => {
         onProgress({
           stage: "downloading",
-          progress: 25 + Math.round((downloadManager.stats.completed / downloadList.length) * 70),
+          progress: 25 + Math.round(parseFloat(stats.progressPercent) * 0.7),
           message: `Descargando archivos del modpack...`,
-          currentFile: downloadManager.stats.completed,
-          totalFiles: downloadList.length,
+          currentFile: stats.filesCompleted,
+          totalFiles: stats.filesTotal,
           downloadedSize: stats.totalDownloaded,
           totalSize: stats.totalBytes,
-          speedMBps: stats.speedMBps,
+          speedMBps: stats.speedBps / 1024 / 1024,
           etaSeconds: stats.etaSeconds
         });
       }
@@ -676,6 +690,7 @@ ipcMain.handle('cancel-install-or-update', async (event, modpackId) => {
     state.cancelled = true;
     if (state.downloadManager) {
       state.downloadManager.cancel();
+      logger.info(`Cancellation initiated for ${modpackId}`);
     }
     return true;
   }

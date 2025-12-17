@@ -90,7 +90,11 @@ async function installLoader(loaderFiles, downloadManager, onProgress) {
             message: `Descargando archivos del loader... (${downloadManager.stats.completed}/${filesToDownload.length})`,
             currentFile: downloadManager.stats.completed,
             totalFiles: filesToDownload.length,
-            progress: progress
+            progress: progress,
+            downloadedSize: stats.totalDownloaded,
+            totalSize: stats.totalBytes,
+            speedMBps: stats.speedBps / 1024 / 1024,
+            etaSeconds: stats.etaSeconds
           });
         }
       }
