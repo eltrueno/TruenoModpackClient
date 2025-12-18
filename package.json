@@ -1,7 +1,7 @@
 {
   "name": "truenomodpackclient",
   "productName": "Trueno Modpack",
-  "version": "0.5.7",
+  "version": "0.6.0",
   "description": "Installer for Trueno's Minecraft modpacks",
   "main": ".vite/build/main.js",
   "repository": {
@@ -43,10 +43,28 @@
     "email": "truenodeveloper@gmail.com"
   },
   "license": "MIT",
+  "build": {
+    "appId": "es.eltrueno.modpack.client",
+    "productName": "Trueno Modpack",
+    "win": {
+      "target": "squirrel",
+      "icon": "public/icon/icon.ico"
+    },
+    "squirrelWindows": {
+      "iconUrl": "https://eltrueno.github.io/truenomodpack/icon.ico",
+      "loadingGif": "public/TruenoModpack-loading-animation.gif"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "eltrueno",
+      "repo": "TruenoModpackClient"
+    }
+  },
   "dependencies": {
     "axios": "^1.13.2",
     "electron-log": "^5.4.3",
     "electron-squirrel-startup": "^1.0.1",
+    "electron-updater": "^6.6.2",
     "p-limit": "^3.1.0",
     "proper-lockfile": "^4.1.2",
     "vue": "^3.5.13",

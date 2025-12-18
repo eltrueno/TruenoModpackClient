@@ -1,8 +1,20 @@
 const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 const path = require('path');
+const { generateLatestYml } = require('./generate-latest-yml');
 
 module.exports = {
+  hooks: {
+    postMake: async (forgeConfig, makeResults) => {
+      for (const result of makeResults) {
+        for (const artifactPath of result.artifacts) {
+          if (artifactPath.endsWith('Setup.exe')) {
+            await generateLatestYml(artifactPath);
+          }
+        }
+      }
+    }
+  },
   packagerConfig: {
     asar: true,
     icon: path.resolve(__dirname, "./public/icon/icon"),
@@ -48,20 +60,27 @@ module.exports = {
         loadingGif: path.resolve(__dirname, "./public/TruenoModpack-loading-animation.gif"),
         title: "Trueno Modpack",
         productName: "Trueno Modpack",
-        remoteReleases: "https://truenomodpack.eltrueno.es/update/win32/:version",
-        noDelta: false
+        // IMPORTANTE: electron-updater maneja esto automáticamente
+        // remoteReleases ya no es necesario
+        noDelta: true // Mantener deltas activados
       },
+    }
+  ],
+  publishers: [
+    {
+      name: '@electron-forge/publisher-generic',
+      config: {
+        // electron-updater buscará aquí los archivos
+        baseUrl: 'https://truenomodpack.eltrueno.es/update'
+      }
     }
   ],
   plugins: [
     {
       name: '@electron-forge/plugin-vite',
       config: {
-        // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
-        // If you are familiar with Vite configuration, it will look really familiar.
         build: [
           {
-            // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
             entry: 'src/main.js',
             config: path.resolve(__dirname, 'vite.main.config.mjs'),
             target: 'main',
@@ -80,8 +99,6 @@ module.exports = {
         ],
       },
     },
-    // Fuses are used to enable/disable various Electron functionality
-    // at package time, before code signing the application
     new FusesPlugin({
       version: FuseVersion.V1,
       [FuseV1Options.RunAsNode]: false,

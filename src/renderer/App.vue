@@ -50,6 +50,7 @@ const updateStatus = ref({
   checking: false,
   downloading: false,
   ready: false,
+  progress: 0,
   message: 'Cargando... Esto debería de ser rápido'
 });
 
@@ -98,14 +99,19 @@ onMounted(async () => {
     if(!value) loading.value = false;
   });
     
-  const mustUpdate = await mustCheckForUpdates();
+  const mustCheckUpdate = await mustCheckForUpdates();
   const cfgJustUpdated = await get('justUpdated');
 
-  if(!cfgJustUpdated && mustUpdate) {
+  // Forzar comprobación si NO está empaquetado (dev) o si ha pasado el cooldown
+  const forceCheck = !window.autoUpdater.isPackaged;
+
+  if(!cfgJustUpdated && (mustCheckUpdate || forceCheck)) {
+    updateStatus.value.checking = true;
+    updateStatus.value.message = 'Comprobando actualizaciones...';
     setTimeout(() => {
       checkForUpdates();
-    }, 1500);
-  }else{
+    }, 500);
+  } else {
     await set('justUpdated', false);
     loading.value = false;
     if(cfgJustUpdated){
@@ -120,34 +126,35 @@ onMounted(async () => {
 
   // Escuchar eventos del auto-updater
   window.autoUpdater.onUpdateChecking((_event) => {
-    updateStatus.value = {
-      checking: true,
-      downloading: false,
-      ready: false,
-      message: 'Comprobando actualizaciones...'
-    };
+    // Solo cambiar si no estamos ya descargando o listos
+    if (!updateStatus.value.downloading && !updateStatus.value.ready) {
+      updateStatus.value.checking = true;
+      updateStatus.value.message = 'Comprobando actualizaciones...';
+    }
   });
+
   window.autoUpdater.onUpdateAvailable((_event) => {
+    if (updateStatus.value.downloading) return; // Ya estamos en ello
+
     toastRef.value?.add({
       title: 'Actualización disponible',
       message: 'Hay una actualización de la aplicación disponible. Se procederá a su descarga',
       type: 'info'
     });
-    updateStatus.value = {
-      checking: false,
-      downloading: true,
-      ready: false,
-      message: 'Descargando actualización...'
-    };
+    updateStatus.value.checking = false;
+    updateStatus.value.downloading = true;
+    updateStatus.value.message = 'Descargando actualización...';
   });
   window.autoUpdater.onUpdateNotAvailable((_event) => {
-    loading.value = false;
-    updateStatus.value = {
-      checking: false,
-      downloading: false,
-      ready: false,
-      message: ''
-    };
+    // Solo si estábamos "comprobando" y nada más
+    if (updateStatus.value.checking && !updateStatus.value.downloading && !updateStatus.value.ready) {
+      loading.value = false;
+      updateStatus.value.checking = false;
+      updateStatus.value.message = '';
+    }
+  });
+  window.autoUpdater.onUpdateDownloadProgress((_event, info) => {
+    updateStatus.value.progress = info.percent;
   });
   window.autoUpdater.onUpdateDownloaded(async (_event, info) => {
     updateStatus.value = {
@@ -187,17 +194,12 @@ onMounted(async () => {
 
 })
 
+
+
 async function checkForUpdates() {
   try {
     await window.autoUpdater.checkForUpdates();
   } catch (error) {
-    console.error('Error al comprobar actualizaciones:', error);
-    updateStatus.value = {
-      checking: false,
-      downloading: false,
-      ready: true,
-      message: ''
-    };
     loading.value = false;
   }
 }
@@ -218,11 +220,11 @@ async function mustCheckForUpdates() {
 </script>
 
 <template>
-  <div v-if="loading || updating || config.loading" class="w-screen h-screen flex flex-col justify-center items-center gap-12">
+  <div v-if="(loading || updating || config.loading)" class="w-screen h-screen flex flex-col justify-center items-center gap-12">
     <TruenoModpackSvg class="w-60 h-60 p-2 overflow-visible" shadow :animations="{gearsSpinAnimation: {enabled: true}, boltGlowAnimation: {enabled: true}}" />
     <div class="flex flex-col gap-2 ustify-center items-center">
       <span class="font-semibold text-xl">{{ loadingMessage }}</span>
-      <progress v-if="updateStatus.downloading" class="progress w-96"></progress>
+      <progress v-if="updateStatus.downloading" class="progress w-96" :value="updateStatus.progress" max="100"></progress>
     </div>
   </div>
   <div v-if="!loading &&!updating && online===false" class="w-screen h-screen flex flex-col justify-center items-center pointer-events-none select-none group-hover:select-none">
