@@ -34,12 +34,9 @@ process.on('uncaughtException', (err) => {
 
 
 
-const mustQuit = autoUpdater.handleSquirrelEvents()
-//import started from "electron-squirrel-startup";
-//const started = require('electron-squirrel-startup');
-
-if (mustQuit) {
+if (autoUpdater.handleSquirrelEvents()) {
   app.quit();
+  process.exit(0);
 }
 
 
@@ -97,7 +94,14 @@ const createWindow = async () => {
   });
 
   //AutoUpdater
-  autoUpdater.setupAutoUpdater(mainWindow, { initialDelay: -1 });
+  // No pasamos updateServerUrl para que use la config de package.json (GitHub) por defecto
+  autoUpdater.setupAutoUpdater(mainWindow, {
+    channel: 'latest',
+    initialDelay: 3000,
+    checkInterval: 0,
+    autoDownload: true,
+    autoInstallOnAppQuit: true
+  });
 
 
 };
