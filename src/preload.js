@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('autoUpdater', {
   onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
   onUpdateError: (callback) => ipcRenderer.on('update-error', callback),
   onUpdateDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', callback),
+  isPackaged: process.env.NODE_ENV !== 'development' && !process.defaultApp
 });
 
 contextBridge.exposeInMainWorld('config', {
