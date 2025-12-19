@@ -235,12 +235,12 @@
                             </span>
                             <div class="w-full py-1 px-8 flex justify-between">
                                 <label class="label gap-1 cursor-pointer">
-                                    <input type="checkbox" v-model="config.userPreferences.copyOptions" class="checkbox checkbox-sm checkbox-primary" />
+                                    <input type="checkbox" v-model="config.userPreferences.copyOptions" class="toggle toggle-sm toggle-primary" />
                                     <span class="text-sm tooltip tooltip-right"
                                     data-tip="Copia tus opciones existentes en la .minecraft para usarlas en esta instalación">Copiar opciones</span>
                                 </label>
                                 <label class="label gap-1 cursor-pointer">
-                                    <input type="checkbox" v-model="config.userPreferences.createProfile" class="checkbox checkbox-sm checkbox-primary" />
+                                    <input type="checkbox" v-model="config.userPreferences.createProfile" class="toggle toggle-sm toggle-primary" />
                                     <span class="text-sm tooltip tooltip-left"
                                     data-tip="Crea un perfil para este modpack en el launcher (recomendado)">Crear perfil</span>
                                 </label>
