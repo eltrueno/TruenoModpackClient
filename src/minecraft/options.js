@@ -1,7 +1,9 @@
 // options.js - Módulo para gestionar opciones de Minecraft (options.txt)
 const fs = require('fs').promises;
 const path = require('path');
+const logger = require('../utils/logger.js')
 const { getMinecraftPath } = require('./common.js');
+const { fileExists } = require('../utils/file-utils.js')
 
 /**
  * Copia el archivo options.txt de la carpeta .minecraft a la ruta de instalación del modpack.
@@ -18,16 +20,20 @@ async function copyOptions(modpackPath) {
         try {
             await fs.access(sourcePath);
         } catch {
-            console.log('No se encontró options.txt original en .minecraft, omitiendo copia.');
+            logger.info('No se encontró options.txt original en .minecraft, omitiendo copia.');
             return false;
         }
 
-        await fs.copyFile(sourcePath, destPath);
-        console.log(`options.txt copiado a ${modpackPath}`);
+        const alreadyExists = await fileExists(destPath)
+        // Solo copiar en caso de que no exista en el destino (no reemplazar)
+        if(!alreadyExists){
+            await fs.copyFile(sourcePath, destPath);
+            logger.info(`options.txt copiado a ${modpackPath}`);
+        }else logger.info('Omitido copiado de options.txt (ya existe)')
         return true;
 
     } catch (error) {
-        console.error('Error copiando options.txt:', error);
+        logger.error('Error copiando options.txt:', error);
         return false;
     }
 }

@@ -135,47 +135,6 @@ app.on('will-quit', async () => {
 });
 
 
-/*async function calculateFileHash(filePath) {
-  try {
-    const fileBuffer = await fs.readFile(filePath);
-    const hashSum = crypto.createHash('sha256');
-    hashSum.update(fileBuffer);
-    return 'sha256:' + hashSum.digest('hex');
-  } catch (error) {
-    logger.error('Error calculating hash:', error);
-    return null;
-  }
-}*/
-
-/*const { createReadStream } = require('fs');
-function calculateFileHash(filePath) {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash('sha256');
-    const stream = createReadStream(filePath);
-    stream.on('error', reject);
-    stream.on('data', chunk => hash.update(chunk));
-    stream.on('end', () => resolve('sha256:' + hash.digest('hex')));
-  });
-}
-async function fileExists(filePath) {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function ensureDir(dirPath) {
-  try {
-    await fs.mkdir(dirPath, { recursive: true });
-    return true
-  } catch (error) {
-    logger.error('Error creating directory:', error);
-    return false
-  }
-}*/
-
 function getModpackBasePath(modpackId) {
   return path.join(app.getPath("userData"), 'modpack', modpackId);
 }

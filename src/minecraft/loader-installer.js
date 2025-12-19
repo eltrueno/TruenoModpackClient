@@ -2,6 +2,8 @@
 const fs = require('fs').promises;
 const path = require('path');
 
+const logger = require('../utils/logger.js')
+
 const { fileExists } = require('../utils/file-utils.js')
 const { getMinecraftPath } = require('./common.js')
 
@@ -63,7 +65,7 @@ async function installLoader(loaderFiles, downloadManager, onProgress) {
     }
 
     if (filesToDownload.length === 0) {
-      console.log(`${totalFiles} archivos del loader ya están instalados`);
+      logger.info(`${totalFiles} archivos del loader ya están instalados`);
       return { success: true, alreadyInstalled: true };
     }
 
@@ -105,7 +107,7 @@ async function installLoader(loaderFiles, downloadManager, onProgress) {
     // Verificar hashes si es necesario (opcional, ya el downloadManager maneja errores de red)
     // Por simplicidad confiamos en el downloadManager y si acaso implementaremos verificación después si falla mucho
 
-    console.log(`${filesToDownload.length} archivos del loader instalados`);
+    logger.info(`${filesToDownload.length} archivos del loader instalados`);
 
     if (onProgress) {
       onProgress({ stage: 'complete', message: 'Loader instalado correctamente!', progress: 100 });
@@ -120,7 +122,7 @@ async function installLoader(loaderFiles, downloadManager, onProgress) {
     if (error.message === 'Download cancelled') {
       throw error;
     }
-    console.error('Error instalando loader:', error);
+    logger.error('Error instalando loader:', error);
     throw error;
   }
 }
