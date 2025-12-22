@@ -540,16 +540,16 @@ async function handleInstall() {
 }
 
 // Actualizar modpack
-async function handleUpdate() {
+async function handleUpdate(showConfirm=true) {
     try {
 
-        const confirmed = await globalDialog.showConfirmable('info',
+        const confirmed = showConfirm ? await globalDialog.showConfirmable('info',
             'Actualización '+remoteModpackVersion.string,
             '¿Quieres continuar con la actualización del modpack?',
             false,
             'Actualizar',
             'Cancelar'
-        );
+        ) : true;
 
         if (!confirmed) {
             return;
@@ -629,7 +629,7 @@ async function verifyIntegrity() {
             'Cancelar'
             );
             if (confirmed) {
-                await handleUpdate();
+                await handleUpdate(false);
             }
         }
         loading.value = false;

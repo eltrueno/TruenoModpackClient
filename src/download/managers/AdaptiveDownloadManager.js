@@ -86,8 +86,6 @@ class AdaptiveDownloadManager extends DownloadManager {
 
         logger.info(`Starting download of ${filesList.length} files (${(this.totalBytes / 1024 / 1024).toFixed(2)}MB) with adaptive concurrency`);
 
-        logger.debug(`Files list: ${sortedFiles}`);
-
         // Pre-crear todos los directorios necesarios
         const directories = new Set();
         for (const file of sortedFiles) {
