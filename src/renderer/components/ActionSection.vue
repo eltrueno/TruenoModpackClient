@@ -617,7 +617,10 @@ async function verifyIntegrity() {
         
         if (!result.valid) {
             let message = result.error
-            if(result.missing>0 || result.corrupted>0) message+="\n\nArchivos faltantes: "+result.missing+"\nArchivos corruptos: "+result.corrupted
+            if(result.missing>0 || result.corrupted>0 || result.obsolet>0){
+                message+="\n\nArchivos faltantes: "+result.missing+"\nArchivos corruptos: "
+                +result.corrupted+"\nArchivos obsoletos: "+result.obsolet;
+            }
             const confirmed = await globalDialog.showConfirmable('warning',
             'Es necesario reparar archivos',
             message+'\n\n¿Deseas reparar el modpack?',

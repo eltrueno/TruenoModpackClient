@@ -86,6 +86,8 @@ class AdaptiveDownloadManager extends DownloadManager {
 
         logger.info(`Starting download of ${filesList.length} files (${(this.totalBytes / 1024 / 1024).toFixed(2)}MB) with adaptive concurrency`);
 
+        logger.debug(`Files list: ${sortedFiles}`);
+
         // Pre-crear todos los directorios necesarios
         const directories = new Set();
         for (const file of sortedFiles) {
@@ -234,6 +236,7 @@ class AdaptiveDownloadManager extends DownloadManager {
         const useMemoryDownload = fileSize > 0 && fileSize < this.memoryDownloadThreshold;
 
         try {
+            logger.info("Downloading file: " + file.path + " (" + fileSize + " bytes)");
             let bytesWritten = 0;
 
             if (useMemoryDownload) {

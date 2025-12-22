@@ -262,10 +262,6 @@ async function downloadUpdateWithManager() {
 
     try {
         const fileInfo = lastUpdateInfo.files[0];
-        // En GitHub provider, el .url a veces es solo el nombre.
-        // Intentar resolver la URL completa si es necesario.
-        // Pero electron-updater ya suele resolverlo si el provider está configurado.
-
         let downloadUrl = fileInfo.url;
 
         // Fix para GitHub si la URL no es completa (aunque suele serlo)
@@ -273,7 +269,6 @@ async function downloadUpdateWithManager() {
             // Construir URL de release de GitHub si no viene completa
             const owner = 'eltrueno';
             const repo = 'TruenoModpackClient';
-            // Quitamos el 'v' del tag ya que según los logs no lo usas en el tag de descarga
             downloadUrl = `https://github.com/${owner}/${repo}/releases/download/${lastUpdateInfo.version}/${downloadUrl}`;
         }
 
@@ -281,7 +276,7 @@ async function downloadUpdateWithManager() {
 
         const installerPath = path.join(app.getPath('temp'), `TruenoModpackSetup-${lastUpdateInfo.version}.exe`);
 
-        const manager = new ChunkedDownloadManager(8, 1024 * 1024 * 5); // 8 hilos, chunks 5MB
+        const manager = new ChunkedDownloadManager(12, 1024 * 1024 * 6); // 12 hilos, chunks 6MB
 
         const result = await manager.downloadFiles([{
             url: downloadUrl,
