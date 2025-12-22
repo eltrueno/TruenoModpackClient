@@ -234,6 +234,7 @@ class AdaptiveDownloadManager extends DownloadManager {
         const useMemoryDownload = fileSize > 0 && fileSize < this.memoryDownloadThreshold;
 
         try {
+            logger.info("Downloading file: " + file.path + " (" + fileSize + " bytes)");
             let bytesWritten = 0;
 
             if (useMemoryDownload) {

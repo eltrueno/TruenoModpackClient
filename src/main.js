@@ -135,47 +135,6 @@ app.on('will-quit', async () => {
 });
 
 
-/*async function calculateFileHash(filePath) {
-  try {
-    const fileBuffer = await fs.readFile(filePath);
-    const hashSum = crypto.createHash('sha256');
-    hashSum.update(fileBuffer);
-    return 'sha256:' + hashSum.digest('hex');
-  } catch (error) {
-    logger.error('Error calculating hash:', error);
-    return null;
-  }
-}*/
-
-/*const { createReadStream } = require('fs');
-function calculateFileHash(filePath) {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash('sha256');
-    const stream = createReadStream(filePath);
-    stream.on('error', reject);
-    stream.on('data', chunk => hash.update(chunk));
-    stream.on('end', () => resolve('sha256:' + hash.digest('hex')));
-  });
-}
-async function fileExists(filePath) {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function ensureDir(dirPath) {
-  try {
-    await fs.mkdir(dirPath, { recursive: true });
-    return true
-  } catch (error) {
-    logger.error('Error creating directory:', error);
-    return false
-  }
-}*/
-
 function getModpackBasePath(modpackId) {
   return path.join(app.getPath("userData"), 'modpack', modpackId);
 }
@@ -204,9 +163,14 @@ const getRemoteModpackList = async () => {
   }
 }
 
+const remoteModpackCache = {};
 const getRemoteModpack = async (modpackid) => {
+  if (remoteModpackCache[modpackid]) {
+    return remoteModpackCache[modpackid];
+  }
   try {
     const response = await axios.get(TRUENOMODPACK_BASE_URL + "/" + modpackid + "/truenomodpack.json");
+    remoteModpackCache[modpackid] = response.data;
     return response.data;
   } catch (error) {
     logger.error('Error getting remote modpack:', error);
@@ -226,17 +190,6 @@ async function getLocalModpack(modpackid) {
     await release();
   }
 }
-
-/*async function saveLocalModpack(modpackId, manifest) {
-  try {
-    const manifestPath = getModpackManifestPath(modpackId);
-    await ensureDir(path.dirname(manifestPath));
-    await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
-  } catch (error) {
-    logger.error('Error saving local modpack:', error);
-    throw error;
-  }
-}*/
 
 async function saveLocalModpack(modpackId, manifest) {
   const filePath = path.join(app.getPath("userData"), 'modpack', modpackId, 'truenomodpack.json');
@@ -267,10 +220,11 @@ async function saveLocalVersion(modpackId, data) {
 }
 
 
-async function calculateSyncOperations(modpackId, remoteModpack) {
-  const remote = remoteModpack ? remoteModpack : await getRemoteModpack(modpackId);
+async function calculateSyncOperations(modpackId) {
+  logger.info(`Calculando operaciones de sincronización para el modpack ${modpackId}`);
+  const remote = await getRemoteModpack(modpackId);
   const local = await existsModpackJsonFile(modpackId) ? await getLocalModpack(modpackId) : null;
-  const installPath = getModpackDataPath(modpackId);
+  const localFiles = await syncLocalManifest(modpackId);
 
   const operations = {
     download: [],
@@ -283,8 +237,7 @@ async function calculateSyncOperations(modpackId, remoteModpack) {
     // Ignorar archivos marcados como eliminados
     if (remoteFile.removed_in_version) continue;
 
-    const localFile = local?.files?.[filePath];
-    const fullPath = path.join(installPath, filePath);
+    const localFile = localFiles?.[filePath];
 
     if (!localFile) {
       // Archivo nuevo
@@ -306,7 +259,7 @@ async function calculateSyncOperations(modpackId, remoteModpack) {
         reason: 'modified'
       });
       operations.totalSize += remoteFile.size;
-    } else {
+    } /*else {
       // Verificar integridad del archivo existente
       const actualHash = await calculateFileHash(fullPath);
       if (actualHash !== remoteFile.hash && !remoteFile.editable) {
@@ -319,30 +272,30 @@ async function calculateSyncOperations(modpackId, remoteModpack) {
         });
         operations.totalSize += remoteFile.size;
       }
-    }
+    }*/
   }
 
   // Detectar archivos a eliminar
-  if (local?.files) {
+  if (Object.entries(localFiles).length > 0) {
     const remoteFiles = remote.files || {};
-    for (const filePath of Object.keys(local.files)) {
+    for (const [filePath, localFile] of Object.entries(localFiles)) {
       if (!remoteFiles[filePath] || remoteFiles[filePath]?.removed_in_version) {
         operations.delete.push(filePath);
       }
     }
   }
-
+  logger.info(`Operaciones de sincronización para el modpack ${modpackId}:`, JSON.stringify(operations));
   return { operations, remote, local };
 }
 
 
-async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
+async function installOrUpdateModpack(modpackId, onProgress) {
   try {
     onProgress({ stage: 'calculating', progress: 0, message: 'Calculando cambios necesarios...' });
 
-    const remoteModpack = remoteMp ? remoteMp : await getRemoteModpack(modpackId);
+    const remoteModpack = await getRemoteModpack(modpackId);
 
-    const { operations, remote } = await calculateSyncOperations(modpackId, remoteModpack)
+    const { operations, remote } = await calculateSyncOperations(modpackId)
 
     //const { operations, remote } = await calculateSyncOperations(modpackId);
     const installPath = getModpackDataPath(modpackId);
@@ -601,54 +554,80 @@ async function installOrUpdateModpack(modpackId, onProgress, remoteMp) {
   }
 }
 
+async function syncLocalManifest(modpackId) {
+  logger.info(`Sincronizando archivos del manifiesto local del modpack ${modpackId}`);
+  const installPath = getModpackDataPath(modpackId);
+  const local = await existsModpackJsonFile(modpackId) ? await getLocalModpack(modpackId) : null;
+  const remote = await getRemoteModpack(modpackId);
+  if (!local) return;
+  const realFiles = {};
+  for (const [filePath, fileData] of Object.entries(local.files)) {
+    const fullPath = path.join(installPath, filePath);
+    const exists = await fileExists(fullPath);
+    if (!exists) continue;
+
+    //Comprobar si es un archivo editable
+    const remoteFile = remote.files[filePath];
+    if (remoteFile?.editable) {
+      realFiles[filePath] = { hash: fileData.hash };
+      continue;
+    }
+
+    const actualHash = await calculateFileHash(fullPath);
+    realFiles[filePath] = { hash: actualHash };
+  }
+  //Guardar al archivo local
+  local.files = realFiles;
+  local.synced_at = new Date().toISOString()
+  saveLocalModpack(modpackId, local)
+
+  logger.info(`Archivos del manifiesto local del modpack ${modpackId} sincronizados`);
+  return realFiles;
+}
+
 /**
  * Verify real local files and sync it with local manifest
  */
 async function verifyAndSyncLocal(modpackId) {
+  logger.info(`Verificando archivos del modpack ${modpackId}`);
   const local = await existsModpackJsonFile(modpackId) ? await getLocalModpack(modpackId) : null;
-  const installPath = getModpackDataPath(modpackId);
   if (!local) return { valid: false, error: 'El modpack no está instalado' };
+  const remote = await getRemoteModpack(modpackId);
+  //Sincronizar archivos
+  const localFiles = await syncLocalManifest(modpackId);
+  if (Object.entries(localFiles).length > 0) {
+    let missing = 0, corrupted = 0, obsolet = 0
+    for (const [filePath, fileData] of Object.entries(remote.files)) {
+      const localFile = localFiles[filePath];
 
-  const realFiles = {};
-
-  if (Object.entries(local.files).length > 0) {
-    let missing = 0, corrupted = 0
-    for (const [filePath, fileData] of Object.entries(local.files)) {
-      const fullPath = path.join(installPath, filePath);
-      const exists = await fileExists(fullPath);
-
-      if (!exists) {
+      if (!localFile) {
         missing += 1
+        logger.warn(`El archivo ${filePath} no existe`);
         continue;
       }
       //Si es un archivo editable saltar hash check.
-      /**TODO: Que coja si es editable o no del remote */
-      const ext = path.extname(fullPath);
-      if (ext.endsWith('json') || ext.endsWith('txt') || ext.endsWith('cfg')) {
-        realFiles[filePath] = { hash: fileData.hash };
-        continue;
-      };
+      if (fileData.editable) continue;
 
-      const actualHash = await calculateFileHash(fullPath);
-      if (actualHash !== fileData.hash) {
+      if (localFile.hash !== fileData.hash) {
         corrupted += 1
+        logger.warn(`El archivo ${filePath} está corrupto`);
       }
-
-      realFiles[filePath] = { hash: actualHash };
+    }
+    for (const [filePath, fileData] of Object.entries(localFiles)) {
+      if (!remote.files[filePath] || remote.files[filePath].removed_in_version) {
+        obsolet += 1
+        logger.warn(`El archivo ${filePath} está obsoleto`);
+      }
     }
 
-    local.files = realFiles;
-    local.synced_at = new Date().toISOString()
-
-    saveLocalModpack(modpackId, local)
-
-    const valid = missing === 0 && corrupted === 0;
+    const valid = missing === 0 && corrupted === 0 && obsolet === 0;
     if (valid) showToast('success', 'Verificación correcta', 'Se han verificado todos los archivos del modpack correctamente');
     return {
       valid: valid,
       error: 'Se han detectado archivos faltantes y/o corruptos',
       missing: missing,
-      corrupted: corrupted
+      corrupted: corrupted,
+      obsolet: obsolet
     };
   } else return { valid: false, error: 'El modpack no está instalado' };
 

@@ -540,16 +540,16 @@ async function handleInstall() {
 }
 
 // Actualizar modpack
-async function handleUpdate() {
+async function handleUpdate(showConfirm=true) {
     try {
 
-        const confirmed = await globalDialog.showConfirmable('info',
+        const confirmed = showConfirm ? await globalDialog.showConfirmable('info',
             'Actualización '+remoteModpackVersion.string,
             '¿Quieres continuar con la actualización del modpack?',
             false,
             'Actualizar',
             'Cancelar'
-        );
+        ) : true;
 
         if (!confirmed) {
             return;
@@ -617,7 +617,10 @@ async function verifyIntegrity() {
         
         if (!result.valid) {
             let message = result.error
-            if(result.missing>0 || result.corrupted>0) message+="\n\nArchivos faltantes: "+result.missing+"\nArchivos corruptos: "+result.corrupted
+            if(result.missing>0 || result.corrupted>0 || result.obsolet>0){
+                message+="\n\nArchivos faltantes: "+result.missing+"\nArchivos corruptos: "
+                +result.corrupted+"\nArchivos obsoletos: "+result.obsolet;
+            }
             const confirmed = await globalDialog.showConfirmable('warning',
             'Es necesario reparar archivos',
             message+'\n\n¿Deseas reparar el modpack?',
@@ -626,7 +629,7 @@ async function verifyIntegrity() {
             'Cancelar'
             );
             if (confirmed) {
-                await handleUpdate();
+                await handleUpdate(false);
             }
         }
         loading.value = false;
