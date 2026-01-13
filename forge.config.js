@@ -64,14 +64,36 @@ module.exports = {
         // remoteReleases ya no es necesario
         noDelta: true // Mantener deltas activados
       },
-    }
+    },
+    {
+      name: '@electron-forge/maker-zip',
+      platforms: ['darwin', 'linux'],
+    },
+    {
+      name: '@electron-forge/maker-deb',
+      config: {
+        options: {
+          icon: path.resolve(__dirname, "./public/icon/icon.png"),
+          name: "truenomodpackclient", // En linux los nombres de paquete suelen ser en minúsculas
+          productName: "Trueno Modpack",
+          description: "Installer for Trueno's Minecraft modpacks",
+          maintainer: "Raúl Jiménez (el_trueno) <truenodeveloper@gmail.com>",
+          homepage: "https://eltrueno.github.io/TruenoModpackClient/",
+          categories: ["Game"],
+          section: "games"
+        }
+      }
+    },
   ],
   publishers: [
     {
-      name: '@electron-forge/publisher-generic',
+      name: '@electron-forge/publisher-github',
       config: {
-        // electron-updater buscará aquí los archivos
-        baseUrl: 'https://truenomodpack.eltrueno.es/update'
+        repository: {
+          owner: 'eltrueno',
+          name: 'TruenoModpackClient'
+        },
+        prerelease: false
       }
     }
   ],
