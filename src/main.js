@@ -259,24 +259,11 @@ async function calculateSyncOperations(modpackId) {
         reason: 'modified'
       });
       operations.totalSize += remoteFile.size;
-    } /*else {
-      // Verificar integridad del archivo existente
-      const actualHash = await calculateFileHash(fullPath);
-      if (actualHash !== remoteFile.hash && !remoteFile.editable) {
-        operations.download.push({
-          path: filePath,
-          url: remoteFile.url,
-          hash: remoteFile.hash,
-          size: Number(remoteFile.size),
-          reason: 'corrupted'
-        });
-        operations.totalSize += remoteFile.size;
-      }
-    }*/
+    }
   }
 
   // Detectar archivos a eliminar
-  if (Object.entries(localFiles).length > 0) {
+  if (localFiles && Object.entries(localFiles).length > 0) {
     const remoteFiles = remote.files || {};
     for (const [filePath, localFile] of Object.entries(localFiles)) {
       if (!remoteFiles[filePath] || remoteFiles[filePath]?.removed_in_version) {
@@ -731,4 +718,120 @@ ipcMain.handle('get-ram-info', async () => {
     threeQuartersTotalGB: Math.round((total / 1024 / 1024 / 1024) * 0.75),
     freeGB: (free / 1024 / 1024 / 1024).toFixed(1)
   };
+});
+
+async function countFiles(dir) {
+  let count = 0;
+  let size = 0;
+  try {
+    const files = await fs.readdir(dir);
+    for (const file of files) {
+      const fullPath = path.join(dir, file);
+      const stat = await fs.stat(fullPath);
+      if (stat.isDirectory()) {
+        const result = await countFiles(fullPath);
+        count += result.count;
+        size += result.size;
+      } else {
+        count++;
+        size += stat.size;
+      }
+    }
+  } catch (e) {
+    // Ignore errors for counting
+  }
+  return { count, size };
+}
+
+async function deleteFolderRecursive(dir, onProgress, state) {
+  if (await fileExists(dir)) {
+    const files = await fs.readdir(dir);
+    for (const file of files) {
+      const curPath = path.join(dir, file);
+      let stat;
+      try { stat = await fs.lstat(curPath); } catch (e) { continue; }
+
+      if (stat.isDirectory()) {
+        await deleteFolderRecursive(curPath, onProgress, state);
+        try {
+          await fs.rmdir(curPath);
+        } catch (e) { console.error("Error removing dir", curPath, e) }
+      } else {
+        try {
+          await fs.unlink(curPath);
+          state.processedSize += stat.size;
+          state.processed++;
+          onProgress(state.processed, state.processedSize);
+        } catch (e) { console.error("Error removing file", curPath, e) }
+      }
+    }
+  }
+}
+
+async function uninstallModpack(modpackId, onProgress) {
+  try {
+    if (activeInstallations.has(modpackId)) {
+      throw new Error("Cannot uninstall while installation is active");
+    }
+
+    const installPath = getModpackDataPath(modpackId);
+    const basePath = getModpackBasePath(modpackId);
+
+    // 1. Scan files
+    onProgress({ stage: 'calculating', progress: 0, message: 'Analizando archivos...' });
+    let totalFiles = 0;
+    let totalSize = 0;
+    try {
+      const result = await countFiles(basePath);
+      totalFiles = result.count;
+      totalSize = result.size;
+    } catch (e) {
+      logger.error("Error counting files", e);
+    }
+
+    // 2. Delete files
+    onProgress({ stage: 'deleting', progress: 0, message: 'Eliminando archivos...' });
+
+    const state = { processed: 0, processedSize: 0 };
+
+    // Helper wrapper to report progress
+    const reportProgress = (processed, processedSize) => {
+      const percent = totalFiles > 0 ? Math.round((processed / totalFiles) * 100) : 100;
+      onProgress({
+        stage: 'deleting',
+        progress: percent,
+        message: `Eliminando archivos... (${processed}/${totalFiles})`,
+        currentFile: processed,
+        totalFiles: totalFiles,
+        downloadedSize: processedSize, // Reusing downloadedSize prop for UI compatibility
+        totalSize: totalSize
+      });
+    };
+
+    await deleteFolderRecursive(basePath, reportProgress, state);
+
+    // Ensure directory is gone (sometimes empty dirs remain)
+    try {
+      await fs.rm(basePath, { recursive: true, force: true });
+    } catch (e) { /* ignore */ }
+
+
+    // 3. Remove Profile
+    onProgress({ stage: 'finalizing', progress: 100, message: 'Eliminando perfil...' });
+    await minecraftProfile.deleteProfile(installPath);
+
+    showToast('success', 'Desinstalación completada', 'El modpack ha sido desinstalado correctamente.');
+    return { success: true };
+
+  } catch (error) {
+    logger.error('Error uninstalling modpack:', error);
+    showToast('error', 'Error en desinstalación', 'No se pudo desinstalar el modpack.');
+    throw error;
+  }
+}
+
+ipcMain.handle('uninstall-modpack', async (event, modpackId) => {
+  return await uninstallModpack(modpackId, (data) => {
+    mainWindow.webContents.send('on-progress', data);
+  });
 });

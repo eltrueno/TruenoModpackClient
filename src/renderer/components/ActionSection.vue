@@ -4,6 +4,7 @@
             
             <!-- Progress steps -->
             <div v-if="isProcessing" class="w-full flex justify-center align-middle">
+                <template v-if="!isUninstalling">
                 <ul class="steps w-full" v-if="modpackStatus=='outdated'">
                     <li class="step" :class="{ 'step-primary': currentStage >= 1 }">Comprobación</li>
                     <li class="step" :class="{ 'step-primary': currentStage >= 2 }">Descarga de archivos</li>
@@ -15,6 +16,14 @@
                     <li class="step" :class="{ 'step-primary': currentStage >= 3 }">Descarga</li>
                     <li class="step" :class="{ 'step-primary': currentStage >= 4 }">Creación de perfil</li>
                 </ul>
+                </template>
+                <div v-else>
+                    <ul class="steps w-full">
+                        <li class="step" :class="{ 'step-primary': currentStage >= 1 }">Comprobación</li>
+                        <li class="step" :class="{ 'step-primary': currentStage >= 2 }">Desinstalación</li>
+                        <li class="step" :class="{ 'step-primary': currentStage >= 3 }">Finalización</li>
+                    </ul>
+                </div>
             </div>
 
             <!-- Progress bar durante instalación -->
@@ -319,6 +328,7 @@ function finishProcessing() {
 const loading = ref(true)
 const modpackStatus = ref('uninstalled') // 'uninstalled', 'updated', 'outdated'
 const isProcessing = ref(false)
+const isUninstalling = ref(false)
 const error = ref(null)
 
 const installedLaunchers = ref([])
@@ -378,7 +388,7 @@ function updateUiState() {
             break;
         case 'deleting':
             currentStage.value = 2;
-            currentStageStr.value = "Eliminando archivos obsoletos..."
+            currentStageStr.value = isUninstalling.value ? "Eliminando archivos..." : "Eliminando archivos obsoletos..."
             break;
         case 'downloading':
             currentStage.value = 2;
@@ -600,7 +610,37 @@ async function handleLaunch() {
 }
 
 async function handleUninstall(){
-    globalDialog.show({ title:"No implementado", message:"La desinstalación no está implementada aún. Os jodéis y lo borrais a mano :)", type: 'warning' })
+    const confirmed = await globalDialog.showConfirmable('warning',
+        'Desinstalar Modpack',
+        '¿Estás seguro de que deseas desinstalar el modpack? Esta acción eliminará todos los archivos del modpack.',
+        false,
+        'Desinstalar',
+        'Cancelar'
+    );
+
+    if (confirmed) {
+        try {
+            isProcessing.value = true;
+            isUninstalling.value = true;
+            progressCancelled.value = false;
+            startProcessing();
+            error.value = null;
+
+            await window.modpackAPI.uninstallModpack(props.modpack_id);
+
+            await checkModpackStatus();
+            isProcessing.value = false;
+            isUninstalling.value = false;
+            finishProcessing();
+            
+        } catch (err) {
+            console.error('Error uninstalling modpack:', err);
+             // Toast is already shown by main process, but we update local state
+            isProcessing.value = false;
+            isUninstalling.value = false;
+            finishProcessing();
+        }
+    }
 }
 
 // Abrir carpeta de instalación

@@ -7,8 +7,6 @@ import TruenoModpackSvg from './components/utils/TruenoModpackSvg.vue';
 import GlobalDialog from './components/utils/GlobalDialog.vue'
 import GlobalToast from './components/utils/GlobalToast.vue'
 
-import SnowFlakes from './components/SnowFlakes.vue'
-
 import { useConfig } from './composables/useConfig';
 
 const APP_VERSION = __APP_VERSION__
@@ -252,7 +250,5 @@ async function mustCheckForUpdates() {
 
   <GlobalDialog ref="dialogRef"/>
   <GlobalToast ref="toastRef"/>
-
-  <SnowFlakes/>
 
 </template>
