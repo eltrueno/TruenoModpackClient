@@ -24,7 +24,8 @@ contextBridge.exposeInMainWorld('modpackAPI', {
   installOrUpdateModpack: (modpackId) => ipcRenderer.invoke('install-or-update-modpack', modpackId),
   cancelInstallOrUpdate: (modpackId) => ipcRenderer.invoke('cancel-install-or-update', modpackId),
   verifyModpackIntegrity: (modpackId) => ipcRenderer.invoke('verify-modpack-integrity', modpackId),
-  openModpackPath: (modpackId) => ipcRenderer.invoke("open-modpack-path", modpackId)
+  openModpackPath: (modpackId) => ipcRenderer.invoke("open-modpack-path", modpackId),
+  uninstallModpack: (modpackId) => ipcRenderer.invoke('uninstall-modpack', modpackId)
 });
 
 contextBridge.exposeInMainWorld('autoUpdater', {
