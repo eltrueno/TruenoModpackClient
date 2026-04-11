@@ -6,6 +6,9 @@ const path = require('path');
 const logger = require('./logger');
 const { ChunkedDownloadManager } = require('../download/managers/ChunkedDownloadManager');
 
+const GITHUB_OWNER = 'JesusMontoro';
+const GITHUB_REPO = 'TruenoModpackClient';
+
 autoUpdater.logger = logger;
 autoUpdater.autoDownload = false;
 
@@ -104,8 +107,8 @@ function configureFeed(options = {}) {
 
   autoUpdater.setFeedURL({
     provider: 'github',
-    owner: 'eltrueno',
-    repo: 'TruenoModpackClient'
+    owner: GITHUB_OWNER,
+    repo: GITHUB_REPO
   });
 }
 
@@ -228,7 +231,7 @@ async function downloadUpdateWithManager() {
     let downloadUrl = fileInfo.url;
 
     if (!downloadUrl.startsWith('http')) {
-      downloadUrl = `https://github.com/eltrueno/TruenoModpackClient/releases/download/${lastUpdateInfo.version}/${downloadUrl}`;
+      downloadUrl = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${lastUpdateInfo.version}/${downloadUrl}`;
     }
 
     const installerPath = path.join(app.getPath('temp'), `TruenoModpackSetup-${lastUpdateInfo.version}.exe`);

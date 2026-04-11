@@ -1,7 +1,11 @@
 const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
+const fs = require('fs');
 const path = require('path');
 const { generateLatestYml } = require('./scripts/build/generate-latest-yml');
+
+const GITHUB_OWNER = 'JesusMontoro';
+const GITHUB_REPO = 'TruenoModpackClient';
 
 function getOsxSignConfig() {
   if (!process.env.APPLE_IDENTITY) {
@@ -22,6 +26,23 @@ function getOsxNotarizeConfig() {
     appleId: process.env.APPLE_ID,
     appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
     teamId: process.env.APPLE_TEAM_ID
+  };
+}
+
+function getWindowsCertificateConfig() {
+  const localCertificatePath = path.resolve(__dirname, './eltrueno-app-certificate.pfx');
+  const envCertificatePath = process.env.WINDOWS_CERTIFICATE_FILE;
+  const certificateFile = envCertificatePath && fs.existsSync(envCertificatePath)
+    ? envCertificatePath
+    : (fs.existsSync(localCertificatePath) ? localCertificatePath : null);
+
+  if (!certificateFile) {
+    return {};
+  }
+
+  return {
+    certificateFile,
+    certificatePassword: process.env.WINDOWS_CERTIFICATE_PASSWORD || undefined
   };
 }
 
@@ -84,7 +105,6 @@ module.exports = {
         name: "TruenoModpackClient",
         exe: "TruenoModpack.exe",
         setupExe: "TruenoModpackSetup.exe",
-        certificateFile: './eltrueno-app-certificate.pfx',
         authors: 'Raúl Jiménez (el_trueno)',
         iconUrl: "https://eltrueno.github.io/truenomodpack/icon.ico",
         setupIcon: path.resolve(__dirname, "./public/icon/icon.ico"),
@@ -93,7 +113,8 @@ module.exports = {
         productName: "Trueno Modpack",
         // IMPORTANTE: electron-updater maneja esto automáticamente
         // remoteReleases ya no es necesario
-        noDelta: true // Mantener deltas activados
+        noDelta: true, // Mantener deltas activados
+        ...getWindowsCertificateConfig()
       },
     },
     {
@@ -143,8 +164,8 @@ module.exports = {
       name: '@electron-forge/publisher-github',
       config: {
         repository: {
-          owner: 'eltrueno',
-          name: 'TruenoModpackClient'
+          owner: GITHUB_OWNER,
+          name: GITHUB_REPO
         },
         prerelease: false
       }

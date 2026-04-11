@@ -6,7 +6,7 @@
   "main": ".vite/build/main.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eltrueno/TruenoModpackClient.git"
+    "url": "https://github.com/JesusMontoro/TruenoModpackClient.git"
   },
   "scripts": {
     "start": "node scripts/start.js",
@@ -72,7 +72,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "eltrueno",
+      "owner": "JesusMontoro",
       "repo": "TruenoModpackClient"
     }
   },

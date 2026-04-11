@@ -13,7 +13,8 @@ const crypto = require('crypto');
  */
 async function generateLatestYml(customSetupPath) {
     try {
-        const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+        const projectRoot = path.resolve(__dirname, '..', '..');
+        const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
         const version = packageJson.version;
         const setupExeName = 'TruenoModpackSetup.exe';
 
@@ -21,9 +22,9 @@ async function generateLatestYml(customSetupPath) {
 
         if (!setupPath) {
             const possiblePaths = [
-                path.join(__dirname, 'out', 'make', 'squirrel.windows', 'x64', setupExeName),
-                path.join(__dirname, 'out', 'make', 'squirrel.windows', 'ia32', setupExeName),
-                path.join(__dirname, 'out', 'make', setupExeName)
+                path.join(projectRoot, 'out', 'make', 'squirrel.windows', 'x64', setupExeName),
+                path.join(projectRoot, 'out', 'make', 'squirrel.windows', 'ia32', setupExeName),
+                path.join(projectRoot, 'out', 'make', setupExeName)
             ];
             setupPath = possiblePaths.find(p => fs.existsSync(p));
         }

@@ -18,6 +18,14 @@ Cliente de escritorio para instalar, actualizar y abrir modpacks de Minecraft co
 - macOS: [docs/build/macos/README_MAC_BUILD.md](docs/build/macos/README_MAC_BUILD.md)
 - Checklist macOS: [docs/build/macos/MAC_INSTALL_CHECKLIST.md](docs/build/macos/MAC_INSTALL_CHECKLIST.md)
 
+## Distribucion para usuarios finales
+
+- Los usuarios finales deben descargar los paquetes desde GitHub Releases, no desde el codigo fuente.
+- Windows: instalador `.exe`
+- macOS: `.zip` y `.dmg`
+- Linux: paquetes `.deb` y `.rpm`
+- La publicacion automatica de Releases se hace con el workflow [release.yml](.github/workflows/release.yml) al crear un tag `v*`
+
 ## Notas
 
 - Los artefactos generados (`dist/`, `out/`, `__MACOSX/`) no deben versionarse.

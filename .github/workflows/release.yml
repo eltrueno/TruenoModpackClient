@@ -1,0 +1,94 @@
+name: Release Builds
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: windows
+            make_command: npm run make
+            artifact_glob: |
+              out/make/squirrel.windows/**/*.exe
+              out/make/squirrel.windows/**/RELEASES
+              out/make/squirrel.windows/**/latest.yml
+          - os: ubuntu-latest
+            label: linux
+            make_command: npm run make:linux
+            artifact_glob: |
+              out/make/deb/**/*.deb
+              out/make/rpm/**/*.rpm
+          - os: macos-13
+            label: macos
+            make_command: npm run make:mac
+            artifact_glob: |
+              out/make/zip/darwin/**/*.zip
+              dist/mac/**/*.dmg
+              dist/mac/**/*.zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Prepare Windows certificate
+        if: runner.os == 'Windows' && secrets.WINDOWS_CERTIFICATE_PFX_BASE64 != ''
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes("$env:GITHUB_WORKSPACE/windows-cert.pfx", [Convert]::FromBase64String("${{ secrets.WINDOWS_CERTIFICATE_PFX_BASE64 }}"))
+
+      - name: Install Linux packaging dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm fakeroot dpkg dpkg-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build artifacts
+        run: ${{ matrix.make_command }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WINDOWS_CERTIFICATE_FILE: ${{ github.workspace }}/windows-cert.pfx
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          APPLE_IDENTITY: ${{ secrets.APPLE_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Build macOS DMG bundle
+        if: runner.os == 'macOS'
+        run: ./scripts/build/build-mac-distribution.sh
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}-artifacts
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: error
+
+      - name: Publish GitHub Release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact_glob }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
