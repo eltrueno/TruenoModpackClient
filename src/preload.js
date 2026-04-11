@@ -4,7 +4,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('appAPI', {
-  openMinecraftLauncher: (launcher) => ipcRenderer.invoke('open-minecraft-launcher', launcher),
+  openMinecraftLauncher: (launcher, modpackId) => ipcRenderer.invoke('open-minecraft-launcher', launcher, modpackId),
   getMinecraftLaunchers: () => ipcRenderer.invoke('get-minecraft-launchers'),
   onProgress: (callback) => ipcRenderer.on('on-progress', (event, data) => callback(data)),
   removeProgressListener: () => ipcRenderer.removeAllListeners('on-progress'),
@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('modpackAPI', {
 
 contextBridge.exposeInMainWorld('autoUpdater', {
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  getCapabilities: () => ipcRenderer.invoke('updater:get-capabilities'),
   onUpdateChecking: (callback) => ipcRenderer.on('update-checking', callback),
   onUpdateAvailable: (callback) => ipcRenderer.on('update-available', callback),
   onUpdateNotAvailable: (callback) => ipcRenderer.on('update-not-available', callback),
@@ -46,14 +47,4 @@ contextBridge.exposeInMainWorld('config', {
   setAll: (config) => ipcRenderer.invoke('config:setAll', config),
   save: () => ipcRenderer.invoke('config:save'),
   reset: () => ipcRenderer.invoke('config:reset')
-});
-
-contextBridge.exposeInMainWorld('electron', {
-  ipcRenderer: {
-    on: (channel, callback) => {
-      if (channel === 'app-closing') {
-        ipcRenderer.on(channel, callback);
-      }
-    }
-  }
 });

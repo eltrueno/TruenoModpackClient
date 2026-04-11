@@ -1,0 +1,14 @@
+[Desktop Entry]
+<% if (productName) { %>Name=<%= productName %>
+<% } %><% if (description) { %>Comment=<%= description %>
+<% } %>GenericName=Minecraft Modpack Installer
+Exec=<%= name %> %U
+Icon=<%= name %>
+Type=Application
+StartupNotify=true
+StartupWMClass=TruenoModpack
+Terminal=false
+Categories=<%= categories.join(';') %>;
+Keywords=minecraft;modpack;launcher;fabric;
+<% if (mimeType && mimeType.length) { %>MimeType=<%= mimeType.join(';') %>;
+<% } %>

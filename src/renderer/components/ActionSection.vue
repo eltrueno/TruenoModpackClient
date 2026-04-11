@@ -125,7 +125,7 @@
                     <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                         <path fill-rule="evenodd" d="M8.6 5.2A1 1 0 0 0 7 6v12a1 1 0 0 0 1.6.8l8-6a1 1 0 0 0 0-1.6l-8-6Z" clip-rule="evenodd"/>
                     </svg>
-                    <span v-if="launchersNamesMap[config.userPreferences.preferedLauncher]">Abrir lanzador de Minecraft ({{ launchersNamesMap[config.userPreferences.preferedLauncher] }})</span>
+                    <span v-if="selectedLauncherLabel">Abrir lanzador de Minecraft ({{ selectedLauncherLabel }})</span>
                     <span v-else>Abrir lanzador de Minecraft</span>
                 </button>
 
@@ -173,27 +173,30 @@
                                         </svg>
                                         Selecciona el launcher deseado:
                                     </span>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <label class="flex items-center  justify-center gap-2  cursor-pointer hover:bg-base-300 p-2 rounded-lg" data-tip="¡No tienes instalado este launcher!"
-                                            :class="{ 'tooltip tooltip-bottom': !installedLaunchers.includes('classic') }">
-                                            <input type="radio" name="radioLauncher" class="radio radio-sm radio-primary" value="classic" 
+                                    <div class="grid grid-cols-1 gap-3" :class="{ 'md:grid-cols-2': launcherOptions.length > 1 }">
+                                        <label
+                                            v-for="launcher in launcherOptions"
+                                            :key="launcher.id"
+                                            class="flex items-center justify-center gap-2 cursor-pointer hover:bg-base-300 p-2 rounded-lg"
+                                            data-tip="No tienes instalado este launcher"
+                                            :class="{ 'tooltip tooltip-bottom': !launcher.installed }">
+                                            <input
+                                                type="radio"
+                                                name="radioLauncher"
+                                                class="radio radio-sm radio-primary"
+                                                :value="launcher.id"
                                                 v-model="config.userPreferences.preferedLauncher"
-                                                :disabled="!installedLaunchers.includes('classic')"
-                                                />
-                                            <span class="text-sm"
-                                                :class="{ 'text-base-content/50': !installedLaunchers.includes('classic') }"
-                                                >Oficial Clásico (exe)</span>
-                                        </label>
-                                        <label class="flex items-center justify-center gap-2 cursor-pointer hover:bg-base-300 p-2 rounded-lg" data-tip="¡No tienes instalado este launcher!"
-                                            :class="{ 'tooltip tooltip-bottom': !installedLaunchers.includes('uwp') }">
-                                            <span class="text-sm"
-                                                :class="{ 'text-base-content/50': !installedLaunchers.includes('uwp') }"
-                                                >Oficial Windows (uwp)</span>
-                                            <input type="radio" name="radioLauncher" class="radio radio-sm radio-primary" value="uwp" 
-                                                v-model="config.userPreferences.preferedLauncher"
-                                                :disabled="!installedLaunchers.includes('uwp')"/>
+                                                :disabled="!launcher.installed" />
+                                            <span
+                                                class="text-sm text-center"
+                                                :class="{ 'text-base-content/50': !launcher.installed }">
+                                                {{ launcher.label }}
+                                            </span>
                                         </label>
                                     </div>
+                                    <p v-if="selectedLauncherDescription" class="text-xs opacity-70 text-center">
+                                        {{ selectedLauncherDescription }}
+                                    </p>
                                 </div>
                             </div>
                                     
@@ -297,7 +300,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onBeforeMount, onUnmounted, inject } from "vue"
+import { reactive, ref, onBeforeMount, onUnmounted, inject, computed } from "vue"
 
 import { useConfig } from '../composables/useConfig';
 
@@ -331,11 +334,13 @@ const isProcessing = ref(false)
 const isUninstalling = ref(false)
 const error = ref(null)
 
-const installedLaunchers = ref([])
-const launchersNamesMap = {
-    'classic': 'Oficial Clásico',
-    'uwp': 'Oficial Windows App'
-}
+const launcherOptions = ref([])
+const installedLaunchers = computed(() => launcherOptions.value.filter((launcher) => launcher.installed))
+const selectedLauncher = computed(() =>
+    launcherOptions.value.find((launcher) => launcher.id === config.userPreferences.preferedLauncher) || null
+)
+const selectedLauncherLabel = computed(() => selectedLauncher.value?.label || '')
+const selectedLauncherDescription = computed(() => selectedLauncher.value?.description || '')
 
 const progressData = ref({})
 
@@ -606,7 +611,7 @@ async function handleLaunch() {
         globalDialog.showError('Ningún launcher encontrado', 'No se ha podido encontrar ningún launcher compatible instalado. Por favor, instala un launcher compatible para poder abrirlo.');
         return;
     }
-    await window.appAPI.openMinecraftLauncher(config.userPreferences.preferedLauncher);
+    await window.appAPI.openMinecraftLauncher(config.userPreferences.preferedLauncher, props.modpack_id);
 }
 
 async function handleUninstall(){
@@ -689,11 +694,13 @@ onBeforeMount(async () => {
     // Verificar estado inicial
     await checkModpackStatus();
 
-    // Obtener launchers
-    installedLaunchers.value = await window.appAPI.getMinecraftLaunchers(); 
-    if(!installedLaunchers.value.includes(config.userPreferences.preferedLauncher)){
-        if(installedLaunchers.value.includes('classic')) await set('userPreferences.preferedLauncher', 'classic')
-        else if(installedLaunchers.value.includes('uwp')) await set('userPreferences.preferedLauncher', 'uwp')
+    // Obtener launchers compatibles con el SO actual
+    const launcherData = await window.appAPI.getMinecraftLaunchers();
+    launcherOptions.value = launcherData.launchers || [];
+
+    const installedIds = installedLaunchers.value.map((launcher) => launcher.id);
+    if(!installedIds.includes(config.userPreferences.preferedLauncher)){
+        if(installedIds.length > 0) await set('userPreferences.preferedLauncher', installedIds[0])
         else await set('userPreferences.preferedLauncher', '')
     }
 
