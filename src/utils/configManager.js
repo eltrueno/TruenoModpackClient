@@ -1,7 +1,6 @@
-const { app } = require('electron');
+const { app, ipcMain } = require('electron');
 const fs = require('fs').promises;
 const path = require('path');
-const { ipcMain } = require('electron');
 
 class ConfigManager {
     constructor() {
@@ -20,22 +19,52 @@ class ConfigManager {
         };
     }
 
+    clone(value) {
+        return JSON.parse(JSON.stringify(value));
+    }
+
+    mergeConfig(baseConfig, partialConfig) {
+        if (!partialConfig || typeof partialConfig !== 'object' || Array.isArray(partialConfig)) {
+            return this.clone(baseConfig);
+        }
+
+        const output = this.clone(baseConfig);
+
+        for (const [key, value] of Object.entries(partialConfig)) {
+            if (
+                value &&
+                typeof value === 'object' &&
+                !Array.isArray(value) &&
+                output[key] &&
+                typeof output[key] === 'object' &&
+                !Array.isArray(output[key])
+            ) {
+                output[key] = this.mergeConfig(output[key], value);
+            } else {
+                output[key] = value;
+            }
+        }
+
+        return output;
+    }
+
     async load() {
         try {
             const data = await fs.readFile(this.configPath, 'utf8');
-            this.config = { ...this.defaultConfig, ...JSON.parse(data) };
-            console.log('Configuración cargada:', this.config);
+            this.config = this.mergeConfig(this.defaultConfig, JSON.parse(data));
+            console.log('ConfiguraciÃ³n cargada:', this.config);
         } catch (error) {
             if (error.code === 'ENOENT') {
-                this.config = { ...this.defaultConfig };
+                this.config = this.clone(this.defaultConfig);
                 await this.save();
-                console.log('Configuración inicial creada');
+                console.log('ConfiguraciÃ³n inicial creada');
             } else {
-                console.error('Error al cargar configuración:', error);
-                this.config = { ...this.defaultConfig };
+                console.error('Error al cargar configuraciÃ³n:', error);
+                this.config = this.clone(this.defaultConfig);
             }
         }
-        return this.config;
+
+        return this.getAll();
     }
 
     async save() {
@@ -43,10 +72,10 @@ class ConfigManager {
             this.config.lastOpened = new Date().toISOString();
             const data = JSON.stringify(this.config, null, 2);
             await fs.writeFile(this.configPath, data, 'utf8');
-            console.log('Configuración guardada');
+            console.log('ConfiguraciÃ³n guardada');
             return true;
         } catch (error) {
-            console.error('Error al guardar configuración:', error);
+            console.error('Error al guardar configuraciÃ³n:', error);
             return false;
         }
     }
@@ -69,7 +98,9 @@ class ConfigManager {
         let obj = this.config;
 
         for (const k of keys) {
-            if (!(k in obj)) obj[k] = {};
+            if (!(k in obj) || typeof obj[k] !== 'object' || obj[k] === null) {
+                obj[k] = {};
+            }
             obj = obj[k];
         }
 
@@ -77,31 +108,24 @@ class ConfigManager {
     }
 
     getAll() {
-        return { ...this.config };
+        return this.clone(this.config);
+    }
+
+    setAll(newConfig) {
+        this.config = this.mergeConfig(this.defaultConfig, newConfig);
+        return this.getAll();
     }
 
     async reset() {
-        this.config = { ...this.defaultConfig };
+        this.config = this.clone(this.defaultConfig);
         await this.save();
+        return this.getAll();
     }
 }
 
 const configManager = new ConfigManager();
 module.exports = configManager;
 
-// Guardar al cerrar (sin preventDefault)
-app.on('before-quit', async () => {
-    await configManager.save();
-});
-
-// Salir cuando todas las ventanas están cerradas
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
-});
-
-// IPC handlers
 ipcMain.handle('config:get', (event, key) => {
     return configManager.get(key);
 });
@@ -120,6 +144,9 @@ ipcMain.handle('config:save', async () => {
 });
 
 ipcMain.handle('config:setAll', (event, newConfig) => {
-    configManager.config = newConfig;
-    return true;
+    return configManager.setAll(newConfig);
+});
+
+ipcMain.handle('config:reset', async () => {
+    return await configManager.reset();
 });

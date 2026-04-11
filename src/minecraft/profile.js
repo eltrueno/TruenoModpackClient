@@ -6,7 +6,7 @@ const { app } = require('electron');
 const axios = require('axios');
 
 const { getMinecraftPath } = require('./common.js')
-const { ensureFile } = require('../utils/file-utils.js')
+const { ensureDir } = require('../utils/file-utils.js')
 
 const configManager = require('../utils/configManager.js');
 
@@ -18,6 +18,14 @@ function getLauncherProfilesPath() {
   let minecraftPath = getMinecraftPath();
 
   return path.join(minecraftPath, 'launcher_profiles.json');
+}
+
+function getLauncherAccountsPath() {
+  return path.join(getMinecraftPath(), 'launcher_accounts.json');
+}
+
+function getLauncherQuickPlayPath() {
+  return path.join(getMinecraftPath(), 'launcher_quick_play.json');
 }
 
 /**
@@ -60,10 +68,65 @@ async function writeLauncherProfiles(profiles) {
   const profilesPath = getLauncherProfilesPath();
 
   // Crear directorio .minecraft si no existe
-  await ensureFile(path.dirname(profilesPath))
+  await ensureDir(path.dirname(profilesPath))
 
   // Guardar con formato bonito
   await fs.writeFile(profilesPath, JSON.stringify(profiles, null, 2));
+}
+
+async function readLauncherAccounts() {
+  try {
+    const data = await fs.readFile(getLauncherAccountsPath(), 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function readLauncherQuickPlay() {
+  try {
+    const data = await fs.readFile(getLauncherQuickPlayPath(), 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return {
+        quickPlayData: {},
+        version: 2
+      };
+    }
+    throw error;
+  }
+}
+
+async function writeLauncherQuickPlay(data) {
+  const quickPlayPath = getLauncherQuickPlayPath();
+  await ensureDir(path.dirname(quickPlayPath));
+  await fs.writeFile(quickPlayPath, JSON.stringify(data, null, 2));
+}
+
+async function updateQuickPlayProfile(profileId) {
+  const accounts = await readLauncherAccounts();
+  const activeAccountLocalId = accounts?.activeAccountLocalId;
+  if (!activeAccountLocalId) return;
+
+  const quickPlay = await readLauncherQuickPlay();
+  if (!quickPlay.quickPlayData) {
+    quickPlay.quickPlayData = {};
+  }
+
+  quickPlay.quickPlayData[activeAccountLocalId] = [{
+    epochLastPlayedTimeMs: Date.now(),
+    id: profileId,
+    javaInstance: {
+      configId: profileId
+    },
+    source: 'Java'
+  }];
+
+  await writeLauncherQuickPlay(quickPlay);
 }
 
 /**
@@ -122,7 +185,7 @@ async function createOrUpdateProfile(modpackId, modpackName, versionId, modpackP
 
     const profileId = existingProfileId || generateProfileId(modpackId);
 
-    const cfgMaxRam = await configManager.get('userPreferences.maxRamMB');
+    const cfgMaxRam = await configManager.get('userPreferences.maxRamMB', 8192);
 
     const profile = {
       name: modpackName,
@@ -134,7 +197,7 @@ async function createOrUpdateProfile(modpackId, modpackName, versionId, modpackP
       icon: await getProfileIcon(modpackId),
       lastVersionId: versionId,
       gameDir: modpackPath,
-      javaArgs: '-Xmx' + cfgMaxRam / 1024 + 'G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M'
+      javaArgs: '-Xmx' + Math.max(1, Math.floor(cfgMaxRam / 1024)) + 'G -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M'
     };
 
     // Añadir/actualizar el perfil
@@ -145,6 +208,7 @@ async function createOrUpdateProfile(modpackId, modpackName, versionId, modpackP
 
     // Guardar cambios
     await writeLauncherProfiles(launcherProfiles);
+    await updateQuickPlayProfile(profileId);
 
     console.log(`Perfil de Minecraft creado/actualizado`);
 

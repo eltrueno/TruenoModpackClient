@@ -90,12 +90,14 @@ typings/
 
 # Electron-Forge
 out/
+dist/
+__MACOSX/
+.tmp-dmg/
+*.dmg
 
 *.pfx
 
 *.zip
-
-scripts/
 
 *.timestamp-*-mjs
 

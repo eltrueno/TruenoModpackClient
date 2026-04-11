@@ -1,7 +1,7 @@
 <script setup>
 import Modpack from './components/Modpack.vue'
 import ActionSection from './components/ActionSection.vue';
-import { ref, onMounted, computed, provide, watch, watchEffect } from 'vue'
+import { ref, onMounted, computed, provide } from 'vue'
 
 import TruenoModpackSvg from './components/utils/TruenoModpackSvg.vue';
 import GlobalDialog from './components/utils/GlobalDialog.vue'
@@ -14,12 +14,8 @@ const APP_VERSION = __APP_VERSION__
 
 const { 
   config, 
-  isLoading, 
-  isSaving, 
   set, 
   get, 
-  save, 
-  reset, 
   init 
 } = useConfig();
 
@@ -51,6 +47,11 @@ const updateStatus = ref({
   progress: 0,
   message: 'Cargando... Esto debería de ser rápido'
 });
+const updateCapabilities = ref({
+  enabled: false,
+  reason: '',
+  isPackaged: false
+});
 
 
 const updating = computed(() => updateStatus.value.checking || updateStatus.value.downloading);
@@ -80,13 +81,6 @@ onMounted(async () => {
   //Iniciar config
   await init();
 
-  //online.value = window.appStatus?.isOffline === false;
-  //if (online.value) loading.value = false;
-
-  window.electron?.ipcRenderer?.on?.('app-closing', async () => {
-    await save(); // Esto sincroniza todo antes de cerrar
-  });
-
   // Escuchar eventos de toast desde el main process
   window.appAPI.onToast((_event, toastData) => {
     toastRef.value?.add(toastData);
@@ -96,14 +90,26 @@ onMounted(async () => {
     online.value = value;
     if(!value) loading.value = false;
   });
+
+  updateCapabilities.value = await window.autoUpdater.getCapabilities();
     
   const mustCheckUpdate = await mustCheckForUpdates();
   const cfgJustUpdated = await get('justUpdated');
 
   // Forzar comprobación si NO está empaquetado (dev) o si ha pasado el cooldown
-  const forceCheck = !window.autoUpdater.isPackaged;
+  const forceCheck = !updateCapabilities.value.isPackaged;
 
-  if(!cfgJustUpdated && (mustCheckUpdate || forceCheck)) {
+  if(!updateCapabilities.value.enabled) {
+    await set('justUpdated', false);
+    loading.value = false;
+    updateStatus.value = {
+      checking: false,
+      downloading: false,
+      ready: false,
+      progress: 0,
+      message: ''
+    };
+  } else if(!cfgJustUpdated && (mustCheckUpdate || forceCheck)) {
     updateStatus.value.checking = true;
     updateStatus.value.message = 'Comprobando actualizaciones...';
     setTimeout(() => {
@@ -196,7 +202,10 @@ onMounted(async () => {
 
 async function checkForUpdates() {
   try {
-    await window.autoUpdater.checkForUpdates();
+    const result = await window.autoUpdater.checkForUpdates();
+    if (result?.unsupported) {
+      loading.value = false;
+    }
   } catch (error) {
     loading.value = false;
   }
