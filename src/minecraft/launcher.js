@@ -71,6 +71,8 @@ function detectWindowsClassicLauncher() {
   const classicPath = firstExistingPath([
     path.join('C:', 'Program Files (x86)', 'Minecraft Launcher', 'MinecraftLauncher.exe'),
     path.join('C:', 'Program Files', 'Minecraft Launcher', 'MinecraftLauncher.exe'),
+    path.join('D:', 'Program Files (x86)', 'Minecraft Launcher', 'MinecraftLauncher.exe'),
+    path.join('D:', 'Program Files', 'Minecraft Launcher', 'MinecraftLauncher.exe'),
     path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'Minecraft Launcher', 'MinecraftLauncher.exe')
   ]);
 
@@ -147,8 +149,8 @@ function getLauncherDefinitions() {
       return [
         {
           id: 'classic',
-          label: 'Oficial Clasico (.exe)',
-          description: 'Launcher oficial instalado como ejecutable.',
+          label: 'Oficial Clasico',
+          description: '(.exe)',
           detect: detectWindowsClassicLauncher,
           open: (details) => {
             const child = spawn(details.path, [], {
@@ -161,8 +163,8 @@ function getLauncherDefinitions() {
         },
         {
           id: 'uwp',
-          label: 'Oficial Windows App (UWP)',
-          description: 'Launcher oficial distribuido desde Microsoft Store.',
+          label: 'Oficial Windows App',
+          description: '(uwp)',
           detect: detectWindowsUwpLauncher,
           open: (details) => {
             const appId = `${details.familyName}!Minecraft`;
@@ -181,7 +183,7 @@ function getLauncherDefinitions() {
         {
           id: 'macos-app',
           label: 'Minecraft.app',
-          description: 'Launcher oficial de macOS.',
+          description: '(oficial)',
           detect: detectMacOsLauncher,
           open: (details) => {
             const openArgs = ['-a', details.appPath];
@@ -205,7 +207,7 @@ function getLauncherDefinitions() {
         {
           id: 'linux-launcher',
           label: 'Minecraft Launcher',
-          description: 'Launcher oficial en Linux, nativo o Flatpak.',
+          description: '(cualquier ocifial)',
           detect: detectLinuxLauncher,
           open: (details) => {
             if (details.type === 'flatpak') {
