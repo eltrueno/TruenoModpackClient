@@ -102,3 +102,6 @@ __MACOSX/
 *.timestamp-*-mjs
 
 dev-app-update.yml
+
+# Script local de generacion de manifiestos (no versionado)
+scripts/generate-manifest.js

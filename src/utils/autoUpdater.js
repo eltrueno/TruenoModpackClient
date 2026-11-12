@@ -6,7 +6,7 @@ const path = require('path');
 const logger = require('./logger');
 const { ChunkedDownloadManager } = require('../download/managers/ChunkedDownloadManager');
 
-const GITHUB_OWNER = 'JesusMontoro';
+const GITHUB_OWNER = 'eltrueno';
 const GITHUB_REPO = 'TruenoModpackClient';
 
 autoUpdater.logger = logger;

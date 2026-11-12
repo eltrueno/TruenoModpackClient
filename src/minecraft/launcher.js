@@ -207,7 +207,7 @@ function getLauncherDefinitions() {
         {
           id: 'linux-launcher',
           label: 'Minecraft Launcher',
-          description: '(cualquier ocifial)',
+          description: '(cualquier oficial)',
           detect: detectLinuxLauncher,
           open: (details) => {
             if (details.type === 'flatpak') {

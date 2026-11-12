@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { generateLatestYml } = require('./scripts/build/generate-latest-yml');
 
-const GITHUB_OWNER = 'JesusMontoro';
+const GITHUB_OWNER = 'eltrueno';
 const GITHUB_REPO = 'TruenoModpackClient';
 
 function getOsxSignConfig() {

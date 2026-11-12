@@ -52,14 +52,14 @@ class ConfigManager {
         try {
             const data = await fs.readFile(this.configPath, 'utf8');
             this.config = this.mergeConfig(this.defaultConfig, JSON.parse(data));
-            console.log('ConfiguraciÃ³n cargada:', this.config);
+            console.log('Configuración cargada:', this.config);
         } catch (error) {
             if (error.code === 'ENOENT') {
                 this.config = this.clone(this.defaultConfig);
                 await this.save();
-                console.log('ConfiguraciÃ³n inicial creada');
+                console.log('Configuración inicial creada');
             } else {
-                console.error('Error al cargar configuraciÃ³n:', error);
+                console.error('Error al cargar configuración:', error);
                 this.config = this.clone(this.defaultConfig);
             }
         }
@@ -72,10 +72,10 @@ class ConfigManager {
             this.config.lastOpened = new Date().toISOString();
             const data = JSON.stringify(this.config, null, 2);
             await fs.writeFile(this.configPath, data, 'utf8');
-            console.log('ConfiguraciÃ³n guardada');
+            console.log('Configuración guardada');
             return true;
         } catch (error) {
-            console.error('Error al guardar configuraciÃ³n:', error);
+            console.error('Error al guardar configuración:', error);
             return false;
         }
     }
