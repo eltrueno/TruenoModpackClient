@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+SELF_PATH="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+APP_DIR="$(CDPATH= cd -- "$(dirname -- "$SELF_PATH")" && pwd)"
+APP_BIN="$APP_DIR/TruenoModpack"
+
+if [ ! -x "$APP_BIN" ]; then
+  echo "Error: no se encontro el ejecutable de Trueno Modpack en $APP_BIN" >&2
+  exit 1
+fi
+
+exec "$APP_BIN" --no-sandbox "$@"

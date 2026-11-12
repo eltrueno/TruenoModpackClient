@@ -60,7 +60,8 @@ const createWindow = async () => {
     icon: '././public/icon/icon.png',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: true
+      contextIsolation: true,
+      nodeIntegration: false
     },
   });
 
@@ -337,7 +338,10 @@ async function installOrUpdateModpack(modpackId, onProgress) {
           installationState.downloadManager = null; // Limpiar ref
           checkCancelled();
 
-          if (loaderResult.success) logger.info("Loader instalado correctamente"); makeProfile = true;
+          if (loaderResult.success) {
+            logger.info("Loader instalado correctamente");
+            makeProfile = true;
+          }
         } catch (loaderError) {
           if (loaderError.message === 'Download cancelled' || installationState.cancelled) throw new Error('Installation cancelled');
           logger.error('Error instalando loader:', loaderError)
@@ -566,7 +570,7 @@ async function syncLocalManifest(modpackId) {
   //Guardar al archivo local
   local.files = realFiles;
   local.synced_at = new Date().toISOString()
-  saveLocalModpack(modpackId, local)
+  await saveLocalModpack(modpackId, local)
 
   logger.info(`Archivos del manifiesto local del modpack ${modpackId} sincronizados`);
   return realFiles;
@@ -618,6 +622,38 @@ async function verifyAndSyncLocal(modpackId) {
     };
   } else return { valid: false, error: 'El modpack no está instalado' };
 
+}
+
+async function ensureModpackLauncherReady(modpackId) {
+  const localManifest = await existsModpackJsonFile(modpackId) ? await getLocalModpack(modpackId) : null;
+  if (!localManifest) return { success: false, reason: 'not-installed' };
+
+  const versionId = `truenomodpack-${modpackId}-${localManifest.minecraft_version}`;
+  const installPath = getModpackDataPath(modpackId);
+
+  try {
+    const loaderInstalled = await loaderInstaller.isLoaderInstalled(versionId);
+    if (!loaderInstalled) {
+      const remoteManifest = await getRemoteModpack(modpackId);
+      if (!remoteManifest.loader_files || Object.keys(remoteManifest.loader_files).length === 0) {
+        return { success: false, reason: 'missing-loader-files', versionId };
+      }
+
+      const loaderDownloadManager = new AdaptiveDownloadManager(20, 8, 4);
+      await loaderInstaller.installLoader(remoteManifest.loader_files, loaderDownloadManager);
+    }
+
+    await minecraftProfile.createOrUpdateProfile(modpackId, localManifest.name, versionId, installPath);
+    return { success: true, versionId };
+  } catch (error) {
+    logger.error('Error preparing modpack launcher profile:', error);
+    return {
+      success: false,
+      reason: 'profile-sync-failed',
+      error: error.message,
+      versionId
+    };
+  }
 }
 
 
@@ -676,7 +712,14 @@ ipcMain.handle('get-minecraft-launchers', async () => {
   return await getMinecraftLaunchers();
 });
 
-ipcMain.handle('open-minecraft-launcher', async (event, launcher) => {
+ipcMain.handle('open-minecraft-launcher', async (event, launcher, modpackId) => {
+  if (modpackId) {
+    const prepared = await ensureModpackLauncherReady(modpackId);
+    if (!prepared.success) {
+      showToast('warning', 'Perfil del launcher no sincronizado', 'No se pudo preparar automaticamente el perfil del modpack antes de abrir Minecraft Launcher.');
+    }
+  }
+
   const reply = await openMinecraftLauncher(launcher);
   if (!reply) showToast('error', 'Error al abrir el launcher', 'No se ha podido abrir el launcher. Comprueba que esté instalado correctamente');
   else showToast('info', 'Ejecutando launcher', 'Se esta ejecutando el launcher seleccionado...');
