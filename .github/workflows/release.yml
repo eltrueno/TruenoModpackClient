@@ -85,7 +85,7 @@ jobs:
 
       - name: Build macOS DMG bundle
         if: runner.os == 'macOS'
-        run: ./scripts/build/build-mac-distribution.sh
+        run: sh ./scripts/build/build-mac-distribution.sh
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
