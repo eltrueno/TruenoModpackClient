@@ -90,13 +90,18 @@ typings/
 
 # Electron-Forge
 out/
+dist/
+__MACOSX/
+.tmp-dmg/
+*.dmg
 
 *.pfx
 
 *.zip
 
-scripts/
-
 *.timestamp-*-mjs
 
 dev-app-update.yml
+
+# Script local de generacion de manifiestos (no versionado)
+scripts/generate-manifest.js

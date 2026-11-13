@@ -9,9 +9,13 @@
     "url": "https://github.com/eltrueno/TruenoModpackClient.git"
   },
   "scripts": {
-    "start": "electron-forge start -- --mode development",
+    "start": "node scripts/start.js",
     "package": "electron-forge package -- --mode production",
+    "package:mac": "electron-forge package -- --mode production --platform=darwin",
+    "package:linux": "electron-forge package -- --mode production --platform=linux",
     "make": "electron-forge make -- --mode production",
+    "make:mac": "electron-forge make -- --mode production --platform=darwin",
+    "make:linux": "electron-forge make -- --mode production --platform=linux",
     "publish": "electron-forge publish -- --mode production",
     "generate-manifest": "node scripts/generate-manifest.js"
   },
@@ -49,6 +53,19 @@
     "win": {
       "target": "squirrel",
       "icon": "public/icon/icon.ico"
+    },
+    "mac": {
+      "target": "zip",
+      "icon": "public/icon/icon.png",
+      "category": "public.app-category.games"
+    },
+    "linux": {
+      "target": [
+        "deb",
+        "rpm"
+      ],
+      "icon": "public/icon/icon.png",
+      "category": "Game"
     },
     "squirrelWindows": {
       "iconUrl": "https://eltrueno.github.io/truenomodpack/icon.ico",
