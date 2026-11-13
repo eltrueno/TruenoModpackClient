@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/truenomodpack-logo.png" alt="Trueno Modpack" width="320">
+  <img src="public/icon/icon.png" alt="Trueno Modpack" width="140">
 </p>
 
 <h1 align="center">Trueno Modpack</h1>
