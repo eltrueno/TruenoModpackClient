@@ -160,6 +160,38 @@ onMounted(async () => {
   window.autoUpdater.onUpdateDownloadProgress((_event, info) => {
     updateStatus.value.progress = info.percent;
   });
+  window.autoUpdater.onUpdateInstalling((_event) => {
+    updateStatus.value.checking = false;
+    updateStatus.value.downloading = true;
+    updateStatus.value.progress = 100;
+    updateStatus.value.message = 'Instalando actualización... Puede que se te pida la contraseña';
+  });
+  window.autoUpdater.onUpdateManual(async (_event, info) => {
+    // Hay versión nueva pero no se puede (o no se ha podido) instalar sola
+    loading.value = false;
+    updateStatus.value = {
+      checking: false,
+      downloading: false,
+      ready: false,
+      progress: 0,
+      message: ''
+    };
+
+    const failed = info.reason === 'install-failed' || info.reason === 'error';
+    const message = failed
+      ? `No se ha podido instalar automáticamente la versión ${info.version}. Puedes descargarla e instalarla manualmente.`
+      : `Hay una nueva versión disponible (${info.version}). ¿Quieres abrir la página de descarga?`;
+
+    const accepted = await dialogRef.value?.show({
+      title: 'Actualización disponible',
+      message,
+      type: failed ? 'warning' : 'info',
+      confirmable: true,
+      confirmText: 'Descargar',
+      cancelText: 'Ahora no'
+    });
+    if (accepted) window.open(info.url);
+  });
   window.autoUpdater.onUpdateDownloaded(async (_event, info) => {
     updateStatus.value = {
       checking: false,

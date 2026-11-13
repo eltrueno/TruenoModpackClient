@@ -36,7 +36,11 @@ contextBridge.exposeInMainWorld('autoUpdater', {
   onUpdateNotAvailable: (callback) => ipcRenderer.on('update-not-available', callback),
   onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
   onUpdateError: (callback) => ipcRenderer.on('update-error', callback),
-  onUpdateDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', callback)
+  onUpdateDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', callback),
+  // Linux: el paquete ya esta descargado y se esta instalando (pide contraseña)
+  onUpdateInstalling: (callback) => ipcRenderer.on('update-installing', callback),
+  // Hay version nueva pero hay que descargarla a mano (macOS / Linux sin paquete)
+  onUpdateManual: (callback) => ipcRenderer.on('update-manual', callback)
 });
 
 contextBridge.exposeInMainWorld('config', {

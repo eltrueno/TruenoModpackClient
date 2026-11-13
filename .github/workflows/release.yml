@@ -1,9 +1,14 @@
 name: Release Builds
 
+# Las releases usan tags sin prefijo "v" (p. ej. 0.6.4): el auto-updater
+# construye las URLs de descarga con ese formato.
 on:
   push:
     tags:
-      - "v*"
+      - "[0-9]+.[0-9]+.[0-9]+*"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -13,6 +18,9 @@ jobs:
   build:
     name: Build ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
+    env:
+      # El contexto "secrets" no se puede usar en un "if" de step.
+      WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_PFX_BASE64 }}
     strategy:
       fail-fast: false
       matrix:
@@ -22,6 +30,7 @@ jobs:
             make_command: npm run make
             artifact_glob: |
               out/make/squirrel.windows/**/*.exe
+              out/make/squirrel.windows/**/*.nupkg
               out/make/squirrel.windows/**/RELEASES
               out/make/squirrel.windows/**/latest.yml
           - os: ubuntu-latest
@@ -30,9 +39,9 @@ jobs:
             artifact_glob: |
               out/make/deb/**/*.deb
               out/make/rpm/**/*.rpm
-          - os: macos-13
+          - os: macos-latest
             label: macos
-            make_command: npm run make:mac
+            make_command: npx electron-forge make --platform=darwin --arch=arm64,x64
             artifact_glob: |
               out/make/zip/darwin/**/*.zip
               dist/mac/**/*.dmg
@@ -49,10 +58,10 @@ jobs:
           cache: npm
 
       - name: Prepare Windows certificate
-        if: runner.os == 'Windows' && secrets.WINDOWS_CERTIFICATE_PFX_BASE64 != ''
+        if: runner.os == 'Windows' && env.WINDOWS_CERTIFICATE_PFX_BASE64 != ''
         shell: pwsh
         run: |
-          [IO.File]::WriteAllBytes("$env:GITHUB_WORKSPACE/windows-cert.pfx", [Convert]::FromBase64String("${{ secrets.WINDOWS_CERTIFICATE_PFX_BASE64 }}"))
+          [IO.File]::WriteAllBytes("$env:GITHUB_WORKSPACE/windows-cert.pfx", [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_PFX_BASE64))
 
       - name: Install Linux packaging dependencies
         if: runner.os == 'Linux'
