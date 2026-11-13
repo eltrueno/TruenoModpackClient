@@ -1,0 +1,46 @@
+{
+  "modpack": {
+    "isInstalled": "is-modpack-installed",
+    "getLocal": "get-modpack-local",
+    "getRemote": "get-modpack-remote",
+    "calculateSyncOperations": "calculate-sync-operations",
+    "installOrUpdate": "install-or-update-modpack",
+    "cancelInstallOrUpdate": "cancel-install-or-update",
+    "verifyIntegrity": "verify-modpack-integrity",
+    "openPath": "open-modpack-path",
+    "uninstall": "uninstall-modpack"
+  },
+  "launcher": {
+    "list": "get-minecraft-launchers",
+    "open": "open-minecraft-launcher"
+  },
+  "system": {
+    "getRamInfo": "get-ram-info",
+    "showToast": "show-toast"
+  },
+  "config": {
+    "get": "config:get",
+    "set": "config:set",
+    "getAll": "config:getAll",
+    "setAll": "config:setAll",
+    "save": "config:save",
+    "reset": "config:reset"
+  },
+  "updater": {
+    "check": "check-for-updates",
+    "getCapabilities": "updater:get-capabilities"
+  },
+  "events": {
+    "progress": "on-progress",
+    "onlineStatus": "status",
+    "toast": "show-toast",
+    "updateChecking": "update-checking",
+    "updateAvailable": "update-available",
+    "updateNotAvailable": "update-not-available",
+    "updateDownloadProgress": "update-download-progress",
+    "updateInstalling": "update-installing",
+    "updateDownloaded": "update-downloaded",
+    "updateManual": "update-manual",
+    "updateError": "update-error"
+  }
+}

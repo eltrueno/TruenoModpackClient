@@ -376,7 +376,7 @@
                         class="text-sm text-center"
                         :class="{ 'text-base-content/50': !launcher.installed }"
                       >
-                        {{ launcher.label }} {{ selectedLauncherDescription }}
+                        {{ launcher.label }} {{ launcher.description }}
                       </span>
                     </label>
                   </div>
@@ -683,9 +683,6 @@ const selectedLauncher = computed(
 );
 const selectedLauncherLabel = computed(
   () => selectedLauncher.value?.label || "",
-);
-const selectedLauncherDescription = computed(
-  () => selectedLauncher.value?.description || "",
 );
 
 const progressData = ref({});

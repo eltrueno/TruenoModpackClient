@@ -1,53 +1,58 @@
-// See the Electron documentation for details on how to use preload scripts:
-// https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
+// Puente entre la interfaz (renderer) y el proceso principal.
+// Los nombres de los canales están en shared/ipc-channels.json, compartido con main.
+import { contextBridge, ipcRenderer } from 'electron';
+import channels from './shared/ipc-channels.json';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { modpack, launcher, system, config, updater, events } = channels;
+
+const invoke = (channel) => (...args) => ipcRenderer.invoke(channel, ...args);
+const on = (channel) => (callback) => ipcRenderer.on(channel, callback);
 
 contextBridge.exposeInMainWorld('appAPI', {
-  openMinecraftLauncher: (launcher, modpackId) => ipcRenderer.invoke('open-minecraft-launcher', launcher, modpackId),
-  getMinecraftLaunchers: () => ipcRenderer.invoke('get-minecraft-launchers'),
-  onProgress: (callback) => ipcRenderer.on('on-progress', (event, data) => callback(data)),
-  removeProgressListener: () => ipcRenderer.removeAllListeners('on-progress'),
-  //Online status?
-  onStatus: (callback) => ipcRenderer.on("status", callback),
-  // Toast API
-  showToast: (type, title, message, duration) => ipcRenderer.send('show-toast', { type, title, message, duration }),
-  onToast: (callback) => ipcRenderer.on('show-toast', callback),
-  getRamInfo: () => ipcRenderer.invoke('get-ram-info')
+  openMinecraftLauncher: invoke(launcher.open),
+  getMinecraftLaunchers: invoke(launcher.list),
+  onProgress: (callback) => ipcRenderer.on(events.progress, (_event, data) => callback(data)),
+  removeProgressListener: () => ipcRenderer.removeAllListeners(events.progress),
+  // Estado de la conexión a internet
+  onStatus: on(events.onlineStatus),
+  // Toasts
+  showToast: (type, title, message, duration) => ipcRenderer.send(system.showToast, { type, title, message, duration }),
+  onToast: on(events.toast),
+  getRamInfo: invoke(system.getRamInfo)
 });
 
 contextBridge.exposeInMainWorld('modpackAPI', {
-  isModpackInstalled: (modpackid) => ipcRenderer.invoke('is-modpack-installed', modpackid),
-  getLocalModpackJson: (modpackid) => ipcRenderer.invoke('get-modpack-local', modpackid),
-  getRemoteModpackJson: (modpackid) => ipcRenderer.invoke('get-modpack-remote', modpackid),
-  calculateSyncOperations: (modpackId) => ipcRenderer.invoke('calculate-sync-operations', modpackId),
-  installOrUpdateModpack: (modpackId) => ipcRenderer.invoke('install-or-update-modpack', modpackId),
-  cancelInstallOrUpdate: (modpackId) => ipcRenderer.invoke('cancel-install-or-update', modpackId),
-  verifyModpackIntegrity: (modpackId) => ipcRenderer.invoke('verify-modpack-integrity', modpackId),
-  openModpackPath: (modpackId) => ipcRenderer.invoke("open-modpack-path", modpackId),
-  uninstallModpack: (modpackId) => ipcRenderer.invoke('uninstall-modpack', modpackId)
+  isModpackInstalled: invoke(modpack.isInstalled),
+  getLocalModpackJson: invoke(modpack.getLocal),
+  getRemoteModpackJson: invoke(modpack.getRemote),
+  calculateSyncOperations: invoke(modpack.calculateSyncOperations),
+  installOrUpdateModpack: invoke(modpack.installOrUpdate),
+  cancelInstallOrUpdate: invoke(modpack.cancelInstallOrUpdate),
+  verifyModpackIntegrity: invoke(modpack.verifyIntegrity),
+  openModpackPath: invoke(modpack.openPath),
+  uninstallModpack: invoke(modpack.uninstall)
 });
 
 contextBridge.exposeInMainWorld('autoUpdater', {
-  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
-  getCapabilities: () => ipcRenderer.invoke('updater:get-capabilities'),
-  onUpdateChecking: (callback) => ipcRenderer.on('update-checking', callback),
-  onUpdateAvailable: (callback) => ipcRenderer.on('update-available', callback),
-  onUpdateNotAvailable: (callback) => ipcRenderer.on('update-not-available', callback),
-  onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
-  onUpdateError: (callback) => ipcRenderer.on('update-error', callback),
-  onUpdateDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', callback),
-  // Linux: el paquete ya esta descargado y se esta instalando (pide contraseña)
-  onUpdateInstalling: (callback) => ipcRenderer.on('update-installing', callback),
-  // Hay version nueva pero hay que descargarla a mano (macOS / Linux sin paquete)
-  onUpdateManual: (callback) => ipcRenderer.on('update-manual', callback)
+  checkForUpdates: invoke(updater.check),
+  getCapabilities: invoke(updater.getCapabilities),
+  onUpdateChecking: on(events.updateChecking),
+  onUpdateAvailable: on(events.updateAvailable),
+  onUpdateNotAvailable: on(events.updateNotAvailable),
+  onUpdateDownloaded: on(events.updateDownloaded),
+  onUpdateError: on(events.updateError),
+  onUpdateDownloadProgress: on(events.updateDownloadProgress),
+  // Linux: el paquete ya está descargado y se está instalando (pide contraseña)
+  onUpdateInstalling: on(events.updateInstalling),
+  // Hay versión nueva pero hay que descargarla a mano (macOS / Linux sin paquete)
+  onUpdateManual: on(events.updateManual)
 });
 
 contextBridge.exposeInMainWorld('config', {
-  get: (key) => ipcRenderer.invoke('config:get', key),
-  set: (key, value) => ipcRenderer.invoke('config:set', key, value),
-  getAll: () => ipcRenderer.invoke('config:getAll'),
-  setAll: (config) => ipcRenderer.invoke('config:setAll', config),
-  save: () => ipcRenderer.invoke('config:save'),
-  reset: () => ipcRenderer.invoke('config:reset')
+  get: invoke(config.get),
+  set: invoke(config.set),
+  getAll: invoke(config.getAll),
+  setAll: invoke(config.setAll),
+  save: invoke(config.save),
+  reset: invoke(config.reset)
 });

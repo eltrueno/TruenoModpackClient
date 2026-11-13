@@ -1,82 +1,43 @@
 # Trueno Modpack en macOS
 
-## Objetivo
+Guía para compilar y probar la app en macOS. Si solo quieres instalarla, descarga el `.dmg` desde [Releases](https://github.com/eltrueno/TruenoModpackClient/releases/latest) y sigue las [instrucciones para usuarios](MAC_USERS_README.txt).
 
-Dejar una build de macOS lo mas facil y generica posible para usuarios de Minecraft Launcher en Mac.
+## Requisitos
 
-## Estado actual
-
-El proyecto ya queda preparado para macOS en estos puntos:
-
-- deteccion de la carpeta de Minecraft en rutas habituales de macOS
-- deteccion de `Minecraft.app` en `/Applications` y `~/Applications`
-- preparacion automatica del perfil del modpack en `launcher_profiles.json`
-- scripts de build para `package:mac` y `make:mac`
-
-## Rutas de Minecraft contempladas
-
-La app intenta localizar Minecraft en este orden:
-
-- `MINECRAFT_HOME` si existe
-- `~/Library/Application Support/minecraft`
-- `~/Library/Application Support/.minecraft`
-- `~/.minecraft`
-
-La ruta por defecto usada por el launcher oficial de macOS es:
-
-```txt
-~/Library/Application Support/minecraft
-```
-
-## Launcher contemplado
-
-La app intenta detectar el launcher oficial en:
-
-- `/Applications/Minecraft.app`
-- `~/Applications/Minecraft.app`
-- una copia local bajo la carpeta detectada de Minecraft
-
-Cuando se pulsa `Abrir lanzador de Minecraft`, la app intenta:
-
-1. preparar la version personalizada del modpack
-2. actualizar el perfil del launcher
-3. abrir `Minecraft.app`
+- Un Mac: la build de macOS solo se puede generar en macOS
+- Xcode Command Line Tools (`xcode-select --install`)
+- Node.js 20 LTS y npm
 
 ## Generar la build
 
-La build final de macOS debe generarse en un Mac.
-
-Desde un Mac con Xcode Command Line Tools, Node.js 20 LTS y npm:
-
 ```sh
-chmod +x ./scripts/build/build-mac.sh
 ./scripts/build/build-mac.sh
 ```
 
-O si prefieres lanzar el build directamente:
+O directamente:
 
 ```sh
 npm install
 npm run make:mac
 ```
 
-O para obtener solo la app empaquetada:
+Para las dos arquitecturas a la vez, como hace el workflow de release:
 
 ```sh
-npm run package:mac
+npx electron-forge make --platform=darwin --arch=arm64,x64
+./scripts/build/build-mac-distribution.sh
 ```
 
-El artefacto actual configurado es un `.zip` de macOS.
+| Paso | Resultado |
+|---|---|
+| `make` | `.zip` de la app en `out/make/zip/darwin/<arquitectura>/` |
+| `build-mac-distribution.sh` | `.dmg` y `.zip` con nombre legible en `dist/mac/`, más el `LEEME-MAC.txt` |
 
-## Distribucion recomendada
+Hay una [checklist paso a paso](MAC_INSTALL_CHECKLIST.md) para generar y probar la app en un Mac sin improvisar.
 
-Para distribuirla de forma seria en macOS hace falta:
+## Firma y notarización
 
-- firmar la app
-- notarizarla
-- probarla en un Mac limpio
-
-La configuracion de Forge ya admite firma y notarizacion si se exportan estas variables:
+La app se distribuye **sin firmar**, así que Gatekeeper muestra un aviso la primera vez que se abre. Para firmarla y notarizarla, define estas variables antes de compilar (o como secrets del repositorio para el workflow):
 
 ```sh
 export APPLE_IDENTITY="Developer ID Application: ..."
@@ -85,12 +46,29 @@ export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
 export APPLE_TEAM_ID="TEAMID1234"
 ```
 
-Sin firma y notarizacion, Gatekeeper puede advertir o bloquear la apertura en muchos equipos.
+## Actualizaciones
 
-## Validacion pendiente
+La actualización automática en macOS exige una app firmada, así que por ahora la app **solo avisa**: al abrirla comprueba la última release y, si hay versión nueva, ofrece abrir la página de descarga.
 
-Esta preparacion deja la base lista en el codigo, pero sigue faltando validacion real en un Mac para confirmar:
+## Detección de Minecraft
 
-- que `Minecraft.app` acepta correctamente el arranque con el `workDir` esperado
-- que el launcher deja visible y seleccionada la version personalizada del modpack
-- que la build firmada y notarizada se abre sin friccion
+Carpeta de datos, en este orden (se usa la primera que parezca una carpeta de Minecraft real):
+
+- `MINECRAFT_HOME`, si está definida
+- `~/Library/Application Support/minecraft` (la ruta por defecto del launcher oficial)
+- `~/Library/Application Support/.minecraft`
+- `~/.minecraft`
+
+Launcher oficial:
+
+- `/Applications/Minecraft.app`
+- `~/Applications/Minecraft.app`
+- Una copia dentro de la carpeta de Minecraft detectada
+
+Al pulsar **Abrir lanzador de Minecraft**, la app comprueba que el loader está instalado, actualiza el perfil del modpack y abre `Minecraft.app`.
+
+## Pendiente de validar en un Mac real
+
+- Que `Minecraft.app` respeta el `workDir` con el que se abre.
+- Que el launcher muestra y deja seleccionado el perfil del modpack.
+- Que una build firmada y notarizada se abre sin avisos.

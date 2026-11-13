@@ -1,40 +1,45 @@
-import { defineConfig, normalizePath } from 'vite';
+import { defineConfig } from 'vite';
 import { builtinModules } from 'module';
+import fs from 'fs';
 import path from 'path';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
+
+const OUT_DIR = '.vite/build';
+
+// main.js carga estos directorios con require() en tiempo de ejecución, así
+// que no pasan por el bundler: se copian tal cual junto al main.js compilado.
+const RUNTIME_DIRS = ['core', 'electron', 'shared'];
+
+function listFiles(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const fullPath = path.join(dir, entry.name);
+    return entry.isDirectory() ? listFiles(fullPath) : [fullPath];
+  });
+}
+
+function copyRuntimeDirs() {
+  return {
+    name: 'copy-runtime-dirs',
+    buildStart() {
+      // En desarrollo, recompilar (y reiniciar la app) al cambiar cualquiera de estos archivos
+      for (const dir of RUNTIME_DIRS) {
+        for (const file of listFiles(path.resolve(__dirname, 'src', dir))) {
+          this.addWatchFile(file);
+        }
+      }
+    },
+    closeBundle() {
+      for (const dir of RUNTIME_DIRS) {
+        const target = path.resolve(__dirname, OUT_DIR, dir);
+        fs.rmSync(target, { recursive: true, force: true });
+        fs.cpSync(path.resolve(__dirname, 'src', dir), target, { recursive: true });
+      }
+    }
+  };
+}
 
 // https://vitejs.dev/config
 export default defineConfig(({ mode }) => ({
-  plugins: [
-    viteStaticCopy({
-      targets: [
-        {
-          src: 'src/minecraft/**/*',
-          dest: 'minecraft'
-        },
-        {
-          src: normalizePath('src/minecraft/**/*'),
-          dest: 'minecraft'
-        },
-        {
-          src: 'src/utils/**/*',
-          dest: 'utils'
-        },
-        {
-          src: normalizePath('src/utils/**/*'),
-          dest: 'utils'
-        },
-        {
-          src: 'src/download/**/*',
-          dest: 'download'
-        },
-        {
-          src: normalizePath('src/download/**/*'),
-          dest: 'download'
-        }
-      ]
-    })
-  ],
+  plugins: [copyRuntimeDirs()],
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/main.js'),
@@ -53,7 +58,7 @@ export default defineConfig(({ mode }) => ({
         ...builtinModules.map(m => `node:${m}`)
       ],
     },
-    outDir: '.vite/build',
+    outDir: OUT_DIR,
     emptyOutDir: false
   },
   resolve: {

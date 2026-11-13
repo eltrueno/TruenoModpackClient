@@ -17,6 +17,7 @@
     "make:mac": "electron-forge make -- --mode production --platform=darwin",
     "make:linux": "electron-forge make -- --mode production --platform=linux",
     "publish": "electron-forge publish -- --mode production",
+    "check:core": "node scripts/check-core.js",
     "generate-manifest": "node scripts/generate-manifest.js"
   },
   "devDependencies": {

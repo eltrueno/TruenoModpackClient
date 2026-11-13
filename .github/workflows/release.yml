@@ -43,7 +43,6 @@ jobs:
             label: macos
             make_command: npx electron-forge make --platform=darwin --arch=arm64,x64
             artifact_glob: |
-              out/make/zip/darwin/**/*.zip
               dist/mac/**/*.dmg
               dist/mac/**/*.zip
 
@@ -71,6 +70,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check core is Electron-free
+        run: npm run check:core
 
       - name: Build artifacts
         run: ${{ matrix.make_command }}
